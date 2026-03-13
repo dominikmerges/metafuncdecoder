@@ -1,0 +1,145 @@
+# Functional category: nitrogen_cycling
+#
+# This file defines how annotations from KEGG, Pfam (via GO terms), and CAZy
+# are mapped to the "nitrogen_cycling" functional category.
+#
+# Gene family names and process groupings follow NCycDB (Tu et al. 2019),
+# which covers 68 gene (sub)families across 8 nitrogen cycling processes.
+# Enzyme name patterns match against KEGG ortholog definition strings.
+#
+# To create a custom category, copy this file, rename it, and adjust the patterns.
+# All regex patterns are case-insensitive. Patterns follow Python re syntax.
+
+name: nitrogen_cycling
+description: >
+  Genes involved in biological nitrogen transformations, including nitrogen fixation,
+  nitrification, denitrification, assimilatory and dissimilatory nitrate reduction,
+  anammox, and organic nitrogen degradation. Gene family names and process groupings
+  follow the NCycDB curated database (Tu et al. 2019).
+
+citations:
+  - "Tu et al. (2019) NCycDB: a curated integrative database for fast and accurate metagenomic profiling of nitrogen cycling genes. Bioinformatics 35:1040-1048. https://doi.org/10.1093/bioinformatics/bty741"
+
+
+# --- KEGG patterns ---
+# Matched against KEGG ortholog definition strings (ko_list).
+# Gene names in parentheses refer to NCyc gene family identifiers.
+
+kegg_patterns:
+
+  # Nitrogen fixation (NCyc: nifH, nifD, nifK, nifW, anfG)
+  - pattern: "nitrogenase"
+    subcategory: nitrogen_fixation
+  - pattern: "nitrogen.*fixation"
+    subcategory: nitrogen_fixation
+  - pattern: "nifH"
+    subcategory: nitrogen_fixation
+  - pattern: "nifD"
+    subcategory: nitrogen_fixation
+  - pattern: "nifK"
+    subcategory: nitrogen_fixation
+  - pattern: "nifW"
+    subcategory: nitrogen_fixation
+  - pattern: "anfG"
+    subcategory: nitrogen_fixation
+
+  # Nitrification (NCyc: amoA, amoB, amoC, hao, nxrA, nxrB)
+  - pattern: "ammonia.*monooxygenase"         # amoA/amoB/amoC
+    subcategory: nitrification
+  - pattern: "hydroxylamine.*oxidoreductase"  # hao
+    subcategory: nitrification
+  - pattern: "nitrite.*oxidoreductase"        # nxrA/nxrB
+    subcategory: nitrification
+
+  # Denitrification (NCyc: narG/H/I/J/Z/Y/V/W, napA/B/C, nirK, nirS, norB/C, nosZ)
+  - pattern: "(?<!assimilatory )nitrate reductase"  # narG and related; lookbehind excludes "assimilatory nitrate reductase" (handled below)
+    subcategory: denitrification
+  - pattern: "periplasmic nitrate reductase"  # napA/napB
+    subcategory: denitrification
+  - pattern: "copper-containing nitrite reductase"  # nirK
+    subcategory: denitrification
+  - pattern: "cytochrome cd1 nitrite reductase"     # nirS
+    subcategory: denitrification
+  - pattern: "nitric.*oxide.*reductase"       # norB/norC
+    subcategory: denitrification
+  - pattern: "nitrous.*oxide.*reductase"      # nosZ
+    subcategory: denitrification
+
+  # Assimilatory nitrate reduction (NCyc: nasA, nasB, narB, narC, NR, nirA)
+  - pattern: "assimilatory nitrate reductase"
+    subcategory: assimilatory_nitrate_reduction
+  - pattern: "assimilatory nitrite reductase" # nirA
+    subcategory: assimilatory_nitrate_reduction
+
+  # Dissimilatory nitrate reduction to ammonium — DNRA (NCyc: nirB, nirD, nrfA/B/C/D)
+  - pattern: "nitrite reductase.*NAD"         # nirB/nirD
+    subcategory: dnra
+  - pattern: "cytochrome c nitrite reductase" # nrfA
+    subcategory: dnra
+
+  # Anammox
+  - pattern: "hydrazine.*synthase"
+    subcategory: anammox
+  - pattern: "hydrazine.*dehydrogenase"
+    subcategory: anammox
+
+  # Ammonia assimilation / organic N
+  - pattern: "glutamine.*synthetase"
+    subcategory: ammonia_assimilation
+  - pattern: "glutamate.*dehydrogenase"
+    subcategory: ammonia_assimilation
+  - pattern: "glutamate.*ammonia.*ligase"
+    subcategory: ammonia_assimilation
+  - pattern: "ammonia.*assimilation"
+    subcategory: ammonia_assimilation
+  - pattern: "urease"
+    subcategory: ammonia_assimilation
+  - pattern: "arginine.*deiminase"
+    subcategory: ammonia_assimilation
+  - pattern: "ammonium.*transporter"  # transport, not enzymatic; included per NCycDB scope
+    subcategory: ammonia_assimilation
+
+
+# --- Pfam patterns ---
+# Matched against GO term name strings from the Pfam2GO mapping.
+
+pfam_patterns:
+  - pattern: "nitrogenase"
+    subcategory: nitrogen_fixation
+  - pattern: "nitrogen.*fixation"
+    subcategory: nitrogen_fixation
+  - pattern: "glutamine.*synthetase"
+    subcategory: ammonia_assimilation
+  - pattern: "glutamine.*metabolic"
+    subcategory: ammonia_assimilation
+  - pattern: "glutamate.*ammonia.*ligase"
+    subcategory: ammonia_assimilation
+  - pattern: "(?<!assimilatory )nitrate reductase"  # excludes assimilatory nitrate reductase
+    subcategory: denitrification
+  - pattern: "(?<!assimilatory )nitrite reductase"  # excludes assimilatory nitrite reductase (nirA / ferredoxin-nitrite reductase)
+    subcategory: denitrification
+  - pattern: "ammonia.*assimilation"
+    subcategory: ammonia_assimilation
+  - pattern: "hydroxylamine.*oxidoreductase"
+    subcategory: nitrification
+  - pattern: "nitrous.*oxide.*reductase"
+    subcategory: denitrification
+
+
+# --- Pfam GO terms ---
+# Exact GO ID matches from the Pfam2GO mapping.
+
+pfam_go_terms:
+  - "GO:0006542"  # glutamine biosynthetic process
+  - "GO:0006541"  # glutamine metabolic process
+  - "GO:0004356"  # glutamate-ammonia ligase activity
+  - "GO:0016163"  # nitrogenase activity
+  - "GO:0009399"  # nitrogen fixation
+  - "GO:0019645"  # anaerobic electron transport chain (anammox)
+  - "GO:0042128"  # nitrate assimilation
+
+
+# --- CAZy subcategories ---
+# Nitrogen cycling functions are not encoded in CAZy families.
+
+cazy_subcategories: {}

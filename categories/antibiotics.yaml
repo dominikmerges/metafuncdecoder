@@ -1,0 +1,139 @@
+# Functional category: antibiotics
+#
+# This file defines how annotations from KEGG, Pfam (via GO terms), and CAZy
+# are mapped to the "antibiotics" functional category.
+#
+# Resistance mechanism categories follow the Antibiotic Resistance Ontology (ARO)
+# as implemented in the Comprehensive Antibiotic Resistance Database (CARD).
+# The four primary ARO resistance mechanisms are:
+#   1. Antibiotic inactivation (enzymatic degradation or modification)
+#   2. Antibiotic target alteration (e.g. modified PBPs, ribosomal methylation)
+#   3. Antibiotic efflux (ABC, MFS, RND transporters)
+#   4. Antibiotic target replacement
+#
+# To create a custom category, copy this file, rename it, and adjust the patterns.
+# All regex patterns are case-insensitive. Patterns follow Python re syntax.
+
+name: antibiotics
+description: >
+  Antibiotic resistance-associated genes, grouped by resistance mechanism following
+  the Antibiotic Resistance Ontology (ARO) from CARD (Alcock et al. 2023).
+  Covers enzymatic inactivation, target alteration, efflux, and biosynthesis.
+  Note: antibiotic biosynthesis genes are included as a secondary subcategory.
+
+citations:
+  - "Alcock et al. (2023) CARD 2023: expanded curation, support for machine learning, and resistome prediction at the Comprehensive Antibiotic Resistance Database. Nucleic Acids Res. 51:D690-D699. https://doi.org/10.1093/nar/gkac920"
+
+
+# --- KEGG patterns ---
+# Matched against KEGG ortholog definition strings (ko_list).
+# Subcategory comments follow ARO resistance mechanism groupings.
+
+kegg_patterns:
+
+  # ARO: Antibiotic inactivation — beta-lactam hydrolysis
+  - pattern: "beta.*lactamase|β.*lactamase"
+    subcategory: antibiotic_inactivation
+  - pattern: "cephalosporinase"
+    subcategory: antibiotic_inactivation
+  - pattern: "carbapenemase"
+    subcategory: antibiotic_inactivation
+  - pattern: "penicillin.*acylase"
+    subcategory: antibiotic_inactivation
+
+  # ARO: Antibiotic inactivation — aminoglycoside modification
+  - pattern: "aminoglycoside.*acetyltransferase"
+    subcategory: antibiotic_inactivation
+  - pattern: "aminoglycoside.*phosphotransferase"
+    subcategory: antibiotic_inactivation
+  - pattern: "aminoglycoside.*nucleotidyltransferase"
+    subcategory: antibiotic_inactivation
+  - pattern: "streptomycin.*phosphotransferase"
+    subcategory: antibiotic_inactivation
+  - pattern: "kanamycin.*resistance"
+    subcategory: antibiotic_inactivation
+
+  # ARO: Antibiotic inactivation — other modifying enzymes
+  - pattern: "chloramphenicol.*acetyltransferase"
+    subcategory: antibiotic_inactivation
+  - pattern: "erythromycin.*esterase"
+    subcategory: antibiotic_inactivation
+
+  # ARO: Antibiotic target alteration
+  - pattern: "vancomycin.*resistance"         # VanA/VanB — D-Ala/D-Lac target replacement
+    subcategory: antibiotic_target_alteration
+  - pattern: "methicillin.*resistance"        # mecA — PBP2a with reduced penicillin affinity
+    subcategory: antibiotic_target_alteration
+  - pattern: "tetracycline.*resistance"       # mixed mechanism: ribosomal protection (tet(M)) or efflux (tet(A)); no single subcategory assigned
+  - pattern: "macrolide.*resistance"          # primarily ribosomal methylation (erm genes, EC 2.1.1.-)
+    subcategory: antibiotic_target_alteration
+  - pattern: "fluoroquinolone.*resistance"    # gyrase/topoisomerase modification
+    subcategory: antibiotic_target_alteration
+  - pattern: "rifampicin.*resistance"         # RNA polymerase modification
+    subcategory: antibiotic_target_alteration
+
+  # ARO: Antibiotic efflux
+  # Note: multidrug.*resistance and efflux.*pump are broad patterns; in prokaryotic
+  # KEGG definitions these refer to antibiotic efflux systems, but may occasionally
+  # capture non-antibiotic transport (e.g. heavy metal, bile). Low-confidence hits
+  # (single-database) should be interpreted with caution.
+  - pattern: "multidrug.*resistance"
+    subcategory: antibiotic_efflux
+  - pattern: "efflux.*pump"
+    subcategory: antibiotic_efflux
+  - pattern: "resistance.*nodulation.*division"  # RND family
+    subcategory: antibiotic_efflux
+  - pattern: "major.*facilitator.*superfamily"   # MFS family
+    subcategory: antibiotic_efflux
+
+  # General resistance annotation (broad, no specific mechanism)
+  - "antibiotic.*resistance"
+
+  # Antibiotic biosynthesis
+  - pattern: "antibiotic.*biosynthesis"
+    subcategory: antibiotic_biosynthesis
+  - pattern: "penicillin.*biosynthesis"
+    subcategory: antibiotic_biosynthesis
+  - pattern: "streptomycin.*biosynthesis"
+    subcategory: antibiotic_biosynthesis
+  - pattern: "erythromycin.*biosynthesis"
+    subcategory: antibiotic_biosynthesis
+
+
+# --- Pfam patterns ---
+# Matched against GO term name strings from the Pfam2GO mapping.
+# Patterns without a subcategory: field (antibiotic, antimicrobial, resistance.*protein)
+# match the broad antibiotics category but produce no subcategory label in the output.
+# These are Pfam-only, low-confidence hits. Filter confidence_level = medium or higher
+# to exclude them from results requiring a subcategory assignment.
+
+pfam_patterns:
+  - "antibiotic"
+  - pattern: "beta.*lactam"
+    subcategory: antibiotic_inactivation
+  - pattern: "β.*lactam"
+    subcategory: antibiotic_inactivation
+  - pattern: "penicillin"
+    subcategory: antibiotic_inactivation
+  - "antimicrobial"
+  - "resistance.*protein"
+  - pattern: "antibiotic.*efflux|efflux.*antibiotic"
+    subcategory: antibiotic_efflux
+  - pattern: "aminoglycoside"
+    subcategory: antibiotic_inactivation
+
+
+# --- Pfam GO terms ---
+# Exact GO ID matches from the Pfam2GO mapping.
+
+pfam_go_terms:
+  - "GO:0017000"  # antibiotic biosynthetic process
+  - "GO:0017001"  # antibiotic catabolic process
+  - "GO:0030655"  # beta-lactam antibiotic catabolic process
+  - "GO:0046882"  # negative regulation of antibiotic biosynthetic process
+
+
+# --- CAZy subcategories ---
+# Antibiotic resistance functions are not encoded in CAZy families.
+
+cazy_subcategories: {}

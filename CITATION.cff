@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use MetaFuncDecoder, please cite the following."
+type: software
+title: MetaFuncDecoder
+abstract: >
+  User-friendly functional annotation interpretation for annotated metagenomes.
+  Maps KO terms, Pfam IDs, and CAZy family assignments to functional categories
+  with cross-database confidence scoring.
+authors:
+  - family-names: Merges
+    given-names: Dominik
+    orcid: ""
+repository-code: "https://github.com/dominikmerges/metafuncdecoder"
+doi: "10.5281/zenodo.19009291"
+license: MIT
+version: "1.0.0"
+date-released: "2026-03-13"
+keywords:
+  - metagenomics
+  - functional annotation
+  - CAZy
+  - KEGG
+  - Pfam
+  - carbon cycling
+  - nitrogen cycling
+
+preferred-citation:
+  type: software
+  title: "MetaFuncDecoder v1.0.0"
+  authors:
+    - family-names: Merges
+      given-names: Dominik
+  year: 2026
+  doi: "10.5281/zenodo.19009291"
+  url: "https://doi.org/10.5281/zenodo.19009291"

@@ -1,0 +1,654 @@
+# Functional category: carbon_cycling
+#
+# This file defines how annotations from KEGG, Pfam (via GO terms), and CAZy
+# are mapped to the "carbon_cycling" functional category.
+#
+# Scope: plant and fungal/arthropod biomass decomposition — the dominant
+# carbon inputs to terrestrial (soil) ecosystems. Follows the functional
+# classification of López-Mondéjar et al. (2022) mSystems Table S3.
+#
+# Excluded by design:
+#   - Central carbon metabolic enzymes (pyruvate/lactate/citrate): too broad
+#
+# Note on GH16: GH16 is functionally heterogeneous (β-glucanases, laminarinases,
+# carrageenases, agarases). It is listed under both beta_glucanase and algal_polysaccharide
+# because FamInfo does not resolve these subfunctions at the family level. Use dbCAN_sub
+# subfamily entries (GH16_11–GH16_17 etc.) for substrate-specific assignments.
+#
+# To create a custom category, copy this file, rename it, and adjust the
+# patterns. All regex patterns are case-insensitive (Python re syntax).
+#
+# References for pattern and family definitions:
+#   López-Mondéjar et al. (2022) mSystems — Table S3 CAZy family groupings
+#   CAZy database (Lombard et al. 2014, NAR) — family activity descriptions
+#   Tláskal et al. 2021 mSystems — soil carbon cycling framing
+
+name: carbon_cycling
+description: >
+  Carbohydrate-active enzyme functions involved in the degradation and
+  transformation of plant and fungal/arthropod cell wall polysaccharides,
+  chitin, starch, and pectin. Includes cellulose, hemicellulose, and lignin
+  degradation, as well as oxidative accessory enzymes (LPMOs). Scope follows
+  López-Mondéjar et al. (2022) for terrestrial carbon cycling.
+
+citations:
+  - "López-Mondéjar et al. (2022) mSystems 7:e00829-22. https://doi.org/10.1128/msystems.00829-22"
+  - "Lombard et al. (2014) Nucleic Acids Res. 42:D490-D495. https://doi.org/10.1093/nar/gkt1178"
+  - "Tláskal et al. (2021) mSystems 6(1):e01078-20. https://doi.org/10.1128/msystems.01078-20"
+
+
+# --- KEGG patterns ---
+# Matched against KEGG ortholog definition strings (ko_list).
+# Subcategory labels mirror the CAZy subcategory names below.
+
+kegg_patterns:
+
+  # Cellulose degradation
+  - pattern: "cellulase"
+    subcategory: cellulase
+  - pattern: "endoglucanase"
+    subcategory: cellulase
+  - pattern: "cellobiohydrolase"
+    subcategory: cellulase
+  - pattern: "cellulose.*hydrolase"
+    subcategory: cellulase
+
+  # Beta-glucosidases (cellobiose cleavage — essential for complete cellulose depolymerisation)
+  - pattern: "β-glucosidase|beta-glucosidase"
+    subcategory: beta_glucosidase
+  - pattern: "cellobiase"
+    subcategory: beta_glucosidase
+  - pattern: "β-D-glucosidase|beta-D-glucosidase"
+    subcategory: beta_glucosidase
+
+  # Xylanases (xylan — dominant hemicellulose in angiosperms)
+  - pattern: "xylanase"
+    subcategory: xylanase
+  - pattern: "xyloglucanase"
+    subcategory: xylanase
+  - pattern: "β-xylosidase|beta-xylosidase"
+    subcategory: xylanase
+
+  # Mannanases (mannan — dominant hemicellulose in gymnosperms)
+  - pattern: "mannanase"
+    subcategory: mannanase
+  - pattern: "β-mannanase|beta-mannanase"
+    subcategory: mannanase
+
+  # Arabinofuranosidases (arabinan side chains on pectin and hemicellulose)
+  - pattern: "arabinofuranosidase"
+    subcategory: arabinofuranosidase
+  - pattern: "arabinanase"
+    subcategory: arabinofuranosidase
+
+  # Arabinogalactanases (arabinogalactan side chains of pectin / cell wall glycoproteins)
+  - pattern: "galactanase"
+    subcategory: arabinogalactanase
+  - pattern: "arabinogalactan.*hydrolase"
+    subcategory: arabinogalactanase
+
+  # Other hemicellulases (galactosidases + acetyl xylan esterases)
+  - pattern: "α-galactosidase|alpha-galactosidase"
+    subcategory: other_hemicellulase
+  - pattern: "β-galactosidase|beta-galactosidase"
+    subcategory: other_hemicellulase
+  - pattern: "acetyl xylan esterase"
+    subcategory: other_hemicellulase
+  - pattern: "feruloyl esterase"
+    subcategory: other_hemicellulase
+  - pattern: "glucuronoyl methylesterase"
+    subcategory: other_hemicellulase
+
+  # Beta-glucanases (mixed-linkage glucans in grass cell walls; fungal cell walls)
+  - pattern: "β-glucanase|beta-glucanase"
+    subcategory: beta_glucanase
+  - pattern: "laminarinase"
+    subcategory: beta_glucanase
+  - pattern: "β-1,3-glucanase|beta-1,3-glucanase"
+    subcategory: beta_glucanase
+
+  # Chitinases (chitin from arthropod cuticle and fungal cell walls)
+  - pattern: "chitinase"
+    subcategory: chitinase
+  - pattern: "chitin deacetylase"
+    subcategory: chitinase
+
+  # Algal polysaccharides 
+  - pattern: "carrageenase"
+    subcategory: algal_polysaccharide
+  - pattern: "agarase"
+    subcategory: algal_polysaccharide
+  - pattern: "porphyranase"
+    subcategory: algal_polysaccharide
+  - pattern: "fucoidan.*hydrolase|fucoidan.*lyase"
+    subcategory: algal_polysaccharide
+  - pattern: "alginate.*lyase"
+    subcategory: algal_polysaccharide
+
+  # Pectinases
+  - pattern: "pectinase"
+    subcategory: pectinase
+  - pattern: "polygalacturonase"
+    subcategory: pectinase
+  - pattern: "pectate.*lyase"
+    subcategory: pectinase
+  - pattern: "pectin.*lyase"
+    subcategory: pectinase
+  - pattern: "pectin methylesterase"
+    subcategory: pectinase
+
+  # Starch/glycogen degradation
+  - pattern: "α-amylase|alpha-amylase|amylase"
+    subcategory: starch_degradation
+  - pattern: "glucoamylase"
+    subcategory: starch_degradation
+  - pattern: "pullulanase"
+    subcategory: starch_degradation
+  - pattern: "starch.*hydrolase"
+    subcategory: starch_degradation
+
+  # Lignin degradation
+  - pattern: "laccase"
+    subcategory: lignin_degradation
+  - pattern: "lignin.*peroxidase"
+    subcategory: lignin_degradation
+  - pattern: "manganese.*peroxidase"
+    subcategory: lignin_degradation
+  - pattern: "versatile peroxidase"
+    subcategory: lignin_degradation
+
+  # Peptidoglycanases (bacterial cell wall / microbial necromass)
+  - pattern: "lysozyme"
+    subcategory: peptidoglycanase
+  - pattern: "muramidase|N-acetylmuramidase"
+    subcategory: peptidoglycanase
+  - pattern: "peptidoglycan.*hydrolase"
+    subcategory: peptidoglycanase
+  - pattern: "lytic transglycosylase"
+    subcategory: peptidoglycanase
+
+  # General carbohydrate-active (broad, no specific subcategory)
+  - "glycoside.*hydrolase"
+  - "glycosyl.*hydrolase"
+  - "polysaccharide.*degradation"
+  - "carbohydrate.*metabolism"
+
+
+# --- Pfam patterns ---
+# Matched against GO term name strings from the Pfam2GO mapping.
+
+pfam_patterns:
+  - "cellulase"
+  - "cellulose"
+  - "cellobiose"
+  - "chitin"
+  - "chitinase"
+  - "xylan"
+  - "xylanase"
+  - "mannan"
+  - "mannanase"
+  - "carbohydrate.*catabolic"
+  - "carbohydrate.*metabolic"
+  - "glucanase"
+  - "glycoside.*hydrolase"
+  - "glycosyl.*hydrolase"
+  - "polysaccharide.*degradation"
+  - "β-.*glucanase"
+  - "beta-.*glucanase"
+  - "β-glucosidase"
+  - "beta-glucosidase"
+
+
+# --- Pfam GO terms ---
+# Exact GO ID matches from the Pfam2GO mapping.
+# Format: "GO:XXXXXXX  # description"
+
+pfam_go_terms:
+  - "GO:0005975"  # carbohydrate metabolic process
+  - "GO:0008810"  # cellulase activity
+  - "GO:0030245"  # cellulose catabolic process
+  - "GO:0006032"  # chitin catabolic process
+  - "GO:0004568"  # chitinase activity
+  - "GO:0045493"  # xylan catabolic process
+  - "GO:0016052"  # carbohydrate catabolic process
+  - "GO:0004553"  # hydrolase activity, hydrolyzing O-glycosyl compounds
+  - "GO:0016798"  # hydrolase activity, acting on glycosyl bonds
+
+
+# --- CAZy subcategories ---
+# Each subcategory has:
+#   families: explicit CAZy family list (source: López-Mondéjar 2022 Table S3 + FamInfo)
+#   patterns: matched against FamInfo activity descriptions for families not in the list
+#
+# Families listed under a subcategory take priority over pattern matching.
+
+cazy_subcategories:
+
+  cellulase:
+    description: "Cellulose-degrading enzymes"
+    families:  # López-Mondéjar et al. 2022 Table S3
+      - GH6    # exo/endo-β-1,4-glucanase
+      - GH7    # cellobiohydrolase, endo-β-1,4-glucanase (fungal)
+      - GH8    # endo-β-1,4-glucanase
+      - GH9    # endo-β-1,4-glucanase (processive)
+      - GH12   # endo-β-1,4-glucanase, xyloglucan hydrolase
+      - GH44   # endo-β-1,4-glucanase, xyloglucanase
+      - GH45   # endo-β-1,4-glucanase
+      - GH48   # processive exo/endo-β-1,4-glucanase (cellobiohydrolase)
+      - GH74   # xyloglucanase, oligoxyloglucan hydrolase
+      - GH124  # endoglucanase (EC 3.2.1.4); distantly related to GH23 lytic transglycosylases
+      # GH5 is not listed here because it spans multiple subfunctions (cellulase, xylanase,
+      # mannanase, β-glucosidase). Pattern matching against FamInfo assigns GH5-annotated
+      # genes to all matching subcategories simultaneously. Use GH5_x subfamilies below
+      # for specific assignments when dbCAN_sub annotation is available.
+      # Cellulase-specific subfamilies:
+      - GH5_1  # endoglucanase (EC 3.2.1.4)
+      - GH5_2  # endoglucanase (EC 3.2.1.4)
+      - GH5_4  # endoglucanase (EC 3.2.1.4)
+      - GH5_5  # endoglucanase (EC 3.2.1.4)
+      - GH5_25 # endoglucanase (EC 3.2.1.4)
+      - GH5_26 # endoglucanase (EC 3.2.1.4)
+      - GH5_37 # endoglucanase (EC 3.2.1.4)
+      - GH5_38 # endoglucanase (EC 3.2.1.4)
+      - GH5_39 # endoglucanase (EC 3.2.1.4)
+      - GH5_46 # endoglucanase (EC 3.2.1.4)
+      - GH5_52 # exo-β-1,4-glucanase / cellodextrinase (EC 3.2.1.74)
+      - GH5_53 # exo-β-1,4-glucanase / cellodextrinase (EC 3.2.1.74)
+    patterns:
+      - "cellulase"
+      - "β-1,4-glucanase"
+      - "beta-1,4-glucanase"
+      - "endoglucanase"
+      - "cellobiohydrolase"
+
+  beta_glucosidase:
+    description: "Beta-glucosidases and beta-xylosidases — cleave cellobiose, xylobiose and short oligosaccharides"
+    families:
+      - GH1    # β-glucosidase, β-galactosidase (major family)
+      - GH3    # β-glucosidase, β-xylosidase, N-acetyl-β-glucosaminidase (major family)
+      - GH39   # β-xylosidase (EC 3.2.1.37); α-L-iduronidase (EC 3.2.1.76)
+      - GH52   # β-xylosidase (EC 3.2.1.37)
+      - GH116  # β-glucosidase (EC 3.2.1.21); β-xylosidase (EC 3.2.1.37)
+      # Subfamily entries (require dbCAN_sub annotation):
+      - GH5_22  # β-glucosidase (EC 3.2.1.21)
+      - GH5_43  # β-glucosidase (EC 3.2.1.21)
+      - GH5_45  # β-glucosidase (EC 3.2.1.21)
+      - GH30_2  # β-xylosidase (EC 3.2.1.37)
+      - GH30_6  # β-glucosidase (EC 3.2.1.21)
+      - GH43_1  # β-xylosidase (EC 3.2.1.37)
+      - GH43_11 # β-xylosidase (EC 3.2.1.37)
+      - GH43_22 # β-xylosidase (EC 3.2.1.37)
+      - GH43_27 # β-xylosidase (EC 3.2.1.37)
+      - GH43_35 # β-xylosidase (EC 3.2.1.37)
+    patterns:
+      - "β-glucosidase"
+      - "beta-glucosidase"
+      - "cellobiase"
+      - "β-xylosidase|beta-xylosidase"
+
+  xylanase:
+    description: "Xylanases — degrade xylan (dominant hemicellulose in angiosperms)"
+    families:
+      - GH10   # endo-β-1,4-xylanase (major xylanase family)
+      - GH11   # endo-β-1,4-xylanase (major xylanase family, fungal)
+      - GH30   # β-1,6-glucanase, xylanase (family-level; GH30_7/8 are xylanase subfamilies)
+      - GH43   # β-xylosidase, arabinofuranosidase, arabinanase (heterogeneous; also in arabinofuranosidase)
+      - GH67   # α-glucuronidase (EC 3.2.1.139); xylan α-1,2-glucuronidase (EC 3.2.1.131)
+      - GH115  # xylan α-1,2-glucuronidase (EC 3.2.1.131); α-(4-O-methyl)-glucuronidase
+      # GH98 removed: FamInfo confirms endo-β-galactosidase (EC 3.2.1.-), not a xylanase
+      - GH141  # endo-β-1,4-xylanase (EC 3.2.1.8)      # Subfamily entries (require dbCAN_sub annotation):
+      - GH5_21  # endo-β-1,4-xylanase (EC 3.2.1.8)
+      - GH5_35  # endo-β-1,4-xylanase (EC 3.2.1.8)
+      - GH30_7  # endo-β-1,4-xylanase (EC 3.2.1.8)
+      - GH30_8  # endo-β-1,4-xylanase (EC 3.2.1.8)
+      - GH43_16 # endo-β-1,4-xylanase (EC 3.2.1.8)
+      - GH43_29 # endo-β-1,4-xylanase (EC 3.2.1.8)
+    patterns:
+      - "xylanase(?! inhibitor)"
+      - "xyloglucanase"
+      - "β-xylosidase"
+      - "beta-xylosidase"
+      - "endo-β-1,4-xylanase"
+
+  mannanase:
+    description: "Mannanases — degrade mannan (dominant hemicellulose in gymnosperms)"
+    families:
+      - GH2    # β-mannosidase (EC 3.2.1.25) — heterogeneous family, also listed under other_hemicellulase (β-galactosidase)
+      - GH26   # β-mannanase, β-1,3-xylanase
+      - GH113  # β-mannanase (EC 3.2.1.78)
+
+      - GH134  # endo-β-1,4-mannanase (EC 3.2.1.78)
+      - GH164  # β-mannosidase (EC 3.2.1.25)
+      # Subfamily entries (require dbCAN_sub annotation):
+      - GH5_7  # endo-β-1,4-mannanase (EC 3.2.1.78)
+      - GH5_8  # endo-β-1,4-mannanase (EC 3.2.1.78)
+      - GH5_10 # endo-β-1,4-mannanase (EC 3.2.1.78)
+      - GH5_17 # endo-β-1,4-mannanase (EC 3.2.1.78)
+      - GH5_18 # β-mannosidase (EC 3.2.1.25)
+      - GH5_19 # β-mannosidase (EC 3.2.1.25)
+      - GH5_36 # endo-β-1,4-mannanase (EC 3.2.1.78)
+      - GH5_40 # endo-β-1,4-mannanase (EC 3.2.1.78)
+      - GH5_41 # endo-β-1,4-mannanase (EC 3.2.1.78)
+      - GH5_55 # endo-β-1,4-mannanase (EC 3.2.1.78)
+    patterns:
+      - "mannanase"
+      - "β-1,4-mannanase"
+      - "beta-1,4-mannanase"
+      - "β-mannosidase|beta-mannosidase"
+
+  arabinofuranosidase:
+    description: "Arabinofuranosidases — remove arabinose side chains from pectin and hemicellulose"
+    families:
+      - GH43   # α-L-arabinofuranosidase (EC 3.2.1.55) and arabinanase (EC 3.2.1.99) — heterogeneous family, also listed under xylanase (β-xylosidase, xylanase activities)
+      - GH51   # α-L-arabinofuranosidase (EC 3.2.1.55) and endo-β-1,4-glucanase (EC 3.2.1.4)
+      - GH54   # α-L-arabinofuranosidase (EC 3.2.1.55); β-xylosidase (EC 3.2.1.37)
+      - GH62   # α-L-arabinofuranosidase (acting on arabinoxylan)
+      - GH93   # exo-α-L-1,5-arabinanase
+      # Subfamily entries (require dbCAN_sub annotation):
+      - GH43_2  # α-L-arabinofuranosidase (EC 3.2.1.55)
+      - GH43_9  # α-L-arabinofuranosidase (EC 3.2.1.55)
+      - GH43_10 # α-L-arabinofuranosidase (EC 3.2.1.55)
+      - GH43_12 # α-L-arabinofuranosidase (EC 3.2.1.55)
+      - GH43_17 # α-L-arabinofuranosidase (EC 3.2.1.55)
+      - GH43_26 # α-L-arabinofuranosidase (EC 3.2.1.55)
+      - GH43_34 # α-L-arabinofuranosidase (EC 3.2.1.55)
+    patterns:
+      - "arabinofuranosidase"
+      - "arabinanase"
+      - "arabinase"
+
+  arabinogalactanase:
+    description: "Arabinogalactanases — degrade arabinogalactan side chains of pectin and plant cell wall glycoproteins"
+    # Substrate: arabinogalactan side chains of pectin (RG-I) and cell wall glycoproteins.
+    # GH53 is the only unambiguous family-level entry. GH5_16, GH16_10, GH30_5, and GH43_x
+    # subfamilies below require dbCAN_sub annotation to activate.
+    families:
+      - GH53   # endo-β-1,4-galactanase (EC 3.2.1.89) — unambiguous arabinogalactanase family
+      # Subfamily-specific entries (require dbCAN_sub annotation in input):
+      - GH5_16  # endo-β-1,6-galactanase (EC 3.2.1.164)
+      - GH16_10 # endo-β-1,3-galactanase (EC 3.2.1.181)
+      - GH30_5  # endo-β-1,6-galactanase (EC 3.2.1.164)
+      - GH43_4  # endo-α-1,5-L-arabinanase (EC 3.2.1.99) — arabinogalactan arabinan backbone
+      - GH43_5  # endo-α-1,5-L-arabinanase (EC 3.2.1.99)
+      - GH43_24 # exo-β-1,3-galactanase (EC 3.2.1.145)
+      - GH43_37 # endo-α-1,5-L-arabinanase (EC 3.2.1.99)
+    patterns:
+      - "galactanase"
+      - "β-1,4-galactanase|beta-1,4-galactanase"
+      - "β-1,3-galactanase|beta-1,3-galactanase"
+      - "β-1,6-galactanase|beta-1,6-galactanase"
+      - "arabinogalactan.*hydrolase"
+
+  other_hemicellulase:
+    description: "Other hemicellulases — galactosidases and acetyl xylan esterases acting on hemicellulose side chains"
+    # Covers two functional groups:
+    #   1. Galactosidases — remove galactose side chains from galactomannan, xyloglucan, pectin
+    #   2. Acetyl xylan esterases — de-acetylate xylan backbones to improve xylanase accessibility
+    families:
+      # Galactosidases
+      - GH2    # β-galactosidase (EC 3.2.1.23) and β-mannosidase (EC 3.2.1.25) — also listed under mannanase
+      - GH27   # α-galactosidase (EC 3.2.1.22); α-N-acetylgalactosaminidase
+      - GH35   # β-galactosidase (EC 3.2.1.23)
+      - GH36   # α-galactosidase (EC 3.2.1.22); α-N-acetylgalactosaminidase
+      - GH97   # α-galactosidase (EC 3.2.1.22); α-glucosidase (EC 3.2.1.20)
+      - GH110  # α-galactosidase (EC 3.2.1.22); α-1,3-galactosidase
+
+      - GH147  # β-galactosidase (EC 3.2.1.23)
+      - GH165  # β-galactosidase (EC 3.2.1.23)
+      # Acetyl xylan esterases
+      - CE1    # acetyl xylan esterase (EC 3.1.1.72); feruloyl esterase; cinnamoyl esterase
+      - CE2    # acetyl xylan esterase (EC 3.1.1.72)
+      - CE3    # acetyl xylan esterase (EC 3.1.1.72)
+      - CE4    # acetyl xylan esterase (EC 3.1.1.72) and chitin deacetylase (EC 3.5.1.41) — also listed under chitinase
+      - CE5    # acetyl xylan esterase (EC 3.1.1.72); cutinase (EC 3.1.1.74)
+      - CE6    # acetyl xylan esterase (EC 3.1.1.72)
+      - CE7    # acetyl xylan esterase (EC 3.1.1.72); cephalosporin-C deacetylase
+      - CE12   # acetyl xylan esterase (EC 3.1.1.72) and pectin acetylesterase — also listed under pectinase
+      - CE15   # 4-O-methyl-glucuronoyl methylesterase (EC 3.1.1.-)
+    patterns:
+      - "α-galactosidase|alpha-galactosidase"
+      - "β-galactosidase|beta-galactosidase"
+      - "acetyl xylan esterase"
+      - "feruloyl esterase"
+      - "glucuronoyl methylesterase"
+
+  beta_glucanase:
+    description: "β-glucanases — degrade mixed-linkage glucans in grass and fungal cell walls"
+    families:
+      - GH16   # β-1,3-glucanase and licheninase — heterogeneous family, also listed under algal_polysaccharide (agarase, carrageenase activities)
+      - GH17   # β-1,3-glucanase
+      - GH55   # exo/endo-β-1,3-glucanase
+      - GH64   # β-1,3-glucanase
+      - GH72   # β-1,3-glucanosyltransglycosylase (EC 2.4.1.-) — fungal cell wall remodelling
+      - GH81   # endo-β-1,3-glucanase
+      - GH128  # β-1,3-glucanase (EC 3.2.1.39)
+      # Subfamily-specific entries (require dbCAN_sub annotation):
+      - GH5_47  # endo-β-1,3-glucanase (EC 3.2.1.39); endo-β-1,6-glucosidase (EC 3.2.1.75)
+      - GH30_3  # endo-β-1,6-glucosidase (EC 3.2.1.75)
+
+      - GH144  # endo-β-1,2-glucanase (EC 3.2.1.71)
+      - GH148  # β-1,3-glucanase (EC 3.2.1.-)
+      - GH149  # β-1,3-glucan phosphorylase (EC 2.4.1.97)
+      - GH152  # endo-β-1,3-glucanase (EC 3.2.1.39)
+      - GH157  # endo-β-1,3-glucanase (EC 3.2.1.39)
+      - GH158  # endo-β-1,3-glucanase (EC 3.2.1.39)
+      - GH161  # β-1,3-glucan phosphorylase (EC 2.4.1.97)
+      - GH162  # endo-β-1,2-glucanase (EC 3.2.1.71)
+    patterns:
+      - "β-1,3-glucanase"
+      - "beta-1,3-glucanase"
+      - "β-glucanase"
+      - "beta-glucanase"
+      - "laminarinase"
+      - "lichenase"
+      - "glucanosyltransglycosylase"
+
+  algal_polysaccharide:
+    description: "Algal and marine polysaccharide degrading enzymes — carrageenans, agar, laminarin, fucoidan"
+    families:
+      - GH16    # β-agarase and κ-carrageenase — heterogeneous family, also listed under beta_glucanase (β-1,3-glucanase activities)
+      - GH50    # β-agarase (EC 3.2.1.81)
+      - GH82    # ι-carrageenase (EC 3.2.1.157)
+      - GH86    # β-agarase (EC 3.2.1.81); porphyranase
+      - GH96    # α-agarase (EC 3.2.1.158)
+      - GH107   # sulfated fucan endo-1,4-fucanase (EC 3.2.1.-)
+      - GH117   # α-1,3-3,6-anhydro-L-galactosidase (EC 3.2.1.-) — agarose catabolism
+      - GH118   # β-agarase (EC 3.2.1.81)
+
+      - GH150   # λ-carrageenase (EC 3.2.1.162)
+      - GH167   # β-carrageenase (EC 3.2.1.-)
+      # GH16 algal subfamilies (require dbCAN_sub annotation):
+      - GH16_11 # β-porphyranase (EC 3.2.1.178)
+      - GH16_12 # β-porphyranase (EC 3.2.1.178)
+      - GH16_13 # β-carrageenase (EC 3.2.1.-)
+      - GH16_14 # β-agarase (EC 3.2.1.81)
+      - GH16_15 # β-agarase (EC 3.2.1.81)
+      - GH16_16 # β-agarase (EC 3.2.1.81)
+      - GH16_17 # κ-carrageenase (EC 3.2.1.83)
+      - GH16_26 # β-porphyranase (EC 3.2.1.178)
+    patterns:
+      - "carrageenase"
+      - "carrageenan"
+      - "agarase"
+      - "porphyranase"
+      - "fucoidan"
+      - "alginate.*lyase"
+      - "ulvan"
+
+  chitinase:
+    description: "Chitin-degrading enzymes — degrade arthropod cuticle and fungal cell wall chitin"
+    families:
+      # GH18 and GH19 are the dominant chitinase families in soil.
+      - GH18   # chitinase (class I–IV); dominant soil chitinase
+      - GH19   # chitinase (plant-type, class I/II)
+      - GH20   # β-N-acetylhexosaminidase (cleaves chitin oligomers and N-glycans)
+      - GH46   # chitosanase, chitinase
+      - GH75   # chitosanase
+      # Subfamily entry (requires dbCAN_sub annotation):
+      - GH5_48 # N-acetyl-β-glucosaminidase (EC 3.2.1.52); chitosanase (EC 3.2.1.132)
+      - CE4    # chitin deacetylase (EC 3.5.1.41) — also listed under other_hemicellulase (acetyl xylan esterase)
+    patterns:
+      - "chitinase"
+      # Anchored to require an EC number: prevents false matches on contextual mentions
+      # (e.g. CBM32 FamInfo names an N-acetylglucosaminidase enzyme it is found in,
+      # but CBM32 itself is a galactose/polygalacturonate-binding module, not a chitinase).
+      - "N-acetylglucosaminidase \\(EC"
+      - "chitin deacetylase"
+
+  pectinase:
+    description: "Pectin-degrading enzymes"
+    families:
+      # Main-chain cleaving enzymes
+      - GH28   # polygalacturonase (EC 3.2.1.15 / 3.2.1.67)
+      - PL1    # pectate lyase (EC 4.2.2.2); pectin lyase (EC 4.2.2.10)
+      - PL2    # pectate lyase (EC 4.2.2.2)
+      - PL3    # exo-pectate lyase (EC 4.2.2.9)
+      - PL4    # rhamnogalacturonan endolyase (EC 4.2.2.23)
+      - PL9    # pectate lyase (EC 4.2.2.2); exopolygalacturonate lyase (EC 4.2.2.9)
+      - PL10   # pectate lyase (EC 4.2.2.2)
+      - PL11   # rhamnogalacturonan endolyase (EC 4.2.2.23); exolyase (EC 4.2.2.24)
+      - PL26   # rhamnogalacturonan exolyase (EC 4.2.2.24)
+      # PL subfamily entries — require dbCAN_sub annotation:
+      - PL1_1  # pectate lyase (EC 4.2.2.2)
+      - PL1_2  # pectate lyase (EC 4.2.2.2)
+      - PL1_3  # pectate lyase (EC 4.2.2.2)
+      - PL1_5  # pectate lyase (EC 4.2.2.2); exo-pectate lyase (EC 4.2.2.9)
+      - PL1_6  # pectate lyase (EC 4.2.2.2)
+      - PL1_7  # pectate lyase (EC 4.2.2.2)
+      - PL1_8  # pectin lyase (EC 4.2.2.10)
+      - PL10_1 # pectate lyase (EC 4.2.2.2)
+      - PL10_2 # pectate lyase (EC 4.2.2.2)
+      - PL10_3 # pectate lyase (EC 4.2.2.2)
+      - PL11_1 # rhamnogalacturonan endolyase (EC 4.2.2.23)
+      - PL11_2 # rhamnogalacturonan endolyase (EC 4.2.2.23)
+      # Pectin de-esterification and de-acetylation
+      - CE8    # pectin methylesterase (EC 3.1.1.11)
+      - CE12   # pectin acetylesterase (EC 3.1.1.-) and rhamnogalacturonan acetylesterase — also listed under other_hemicellulase (acetyl xylan esterase)
+      # Rhamnogalacturonan side-chain hydrolases
+      - GH105  # unsaturated rhamnogalacturonyl hydrolase (EC 3.2.1.172)
+      - GH106  # α-L-rhamnosidase (EC 3.2.1.40)
+      - GH127  # β-L-arabinofuranosidase (EC 3.2.1.-) — RG-I arabinan
+
+      - GH137  # β-L-arabinofuranosidase (EC 3.2.1.185) — RG-I arabinan
+      - GH138  # rhamnogalacturonan α-1,2-galacturonohydrolase (EC 3.2.1.173)
+      - GH139  # α-2-O-Me-L-fucosidase (EC 3.2.1.-) — RG-II side chain
+      - GH140  # β-1,2-apiosidase (EC 3.2.1.-) — RG-II side chain
+      - GH142  # β-L-arabinofuranosidase (EC 3.2.1.185) — RG-I arabinan
+      - GH143  # 2-keto-3-deoxy-D-lyxo-heptulosaric acid hydrolase — RG-II
+      - GH145  # L-rhamnohydrolase (EC 3.2.1.-) — RG-II
+      - GH146  # β-L-arabinofuranosidase (EC 3.2.1.185) — RG-I arabinan
+      - GH151  # α-L-fucosidase (EC 3.2.1.51) — RG-II side chain
+    patterns:
+      - "pectinase"
+      - "polygalacturonase"
+      - "pectate lyase"
+      - "pectin lyase"
+      - "pectin methylesterase"
+      - "rhamnogalacturonan.*lyase"
+      - "rhamnogalacturonan.*hydrolase"
+      - "rhamnosidase"
+
+  starch_degradation:
+    description: "Starch, glycogen and related alpha-glucan degrading enzymes"
+    families:
+      # Core starch/glycogen hydrolases
+      - GH13   # α-amylase (large superfamily; also branching enzyme, pullulanase)
+      - GH14   # β-amylase
+      - GH15   # glucoamylase, glucodextranase
+      - GH31   # α-glucosidase, sucrase-isomaltase
+      - GH57   # α-amylase, 4-α-glucanotransferase
+      - GH77   # 4-α-glucanotransferase (amylomaltase, EC 2.4.1.25)
+      # Additional alpha-glucan-active families (López-Mondéjar 2022 Table S3)
+      - GH66   # dextranase (EC 3.2.1.11); cycloisomaltooligosaccharide glucanotransferase
+      - GH68   # levansucrase (EC 2.4.1.10) — primarily fructan-synthetic; also β-fructofuranosidase (EC 3.2.1.26); included per Table S3
+      - GH70   # dextransucrase (EC 2.4.1.5) — biosynthetic glycosyltransferase (EC 2.4), not hydrolytic; synthesises dextran; included per Table S3
+      - GH100  # alkaline/neutral invertase (EC 3.2.1.26)
+      - GH119  # α-amylase (EC 3.2.1.1); distantly related to GH57
+      - GH122  # α-glucosidase (EC 3.2.1.20)
+      - GH126  # α-amylase (EC 3.2.1.-)
+      - GH133  # amylo-α-1,6-glucosidase (EC 3.2.1.33)    patterns:
+      - "amylase"
+      - "α-amylase"
+      - "alpha-amylase"
+      - "glucoamylase"
+      - "pullulanase"
+      - "α-glucosidase|alpha-glucosidase"
+      - "dextranase"
+      - "invertase"
+
+  lignin_degradation:
+    description: "Lignin and aromatic compound oxidizing enzymes"
+    families:
+      - AA1    # laccase / multicopper oxidase (EC 1.10.3.2)
+      - AA2    # class II peroxidases: lignin peroxidase, Mn peroxidase, versatile peroxidase
+      - AA3    # GMC oxidoreductases: cellobiose dehydrogenase, aryl-alcohol oxidase, pyranose oxidase
+      - AA4    # vanillyl-alcohol oxidase (EC 1.1.3.38)
+      - AA5    # copper radical oxidases: glyoxal oxidase, galactose oxidase
+      - AA6    # 1,4-benzoquinone reductase (EC 1.6.5.6) — intracellular quinone detoxification
+      - AA7    # glucooligosaccharide oxidase (EC 1.1.3.-)
+
+      - AA12   # PQQ-dependent oxidoreductase / glucose dehydrogenase — supports Fenton chemistry
+      - AA17   # DyP-type peroxidase — dye-decolorizing peroxidase; oxidises non-phenolic lignin
+      # Subfamily entries (require dbCAN_sub annotation):
+      - AA1_1  # laccase (EC 1.10.3.2)
+      - AA1_2  # ferroxidase (EC 1.10.3.2)
+      - AA1_3  # laccase-like multicopper oxidase
+      - AA3_1  # cellobiose dehydrogenase (EC 1.1.99.18) — electron donor to AA9 LPMOs
+      - AA3_2  # aryl alcohol oxidase (EC 1.1.3.7); glucose 1-oxidase (EC 1.1.3.4)
+      - AA3_3  # alcohol oxidase (EC 1.1.3.13)
+      - AA3_4  # pyranose 2-oxidase (EC 1.1.3.10)
+      - AA5_1  # glyoxal oxidase (EC 1.1.3.-)
+      - AA5_2  # galactose oxidase (EC 1.1.3.9)
+    patterns:
+      - "laccase"
+      - "lignin peroxidase"
+      - "manganese peroxidase"
+      - "versatile peroxidase"
+      - "aryl-alcohol oxidase"
+      - "cellobiose dehydrogenase"
+      - "dye-decolorizing peroxidase"
+      - "DyP.*peroxidase"
+      - "pyranose.*oxidase"
+      - "galactose oxidase"
+      - "glyoxal oxidase"
+      - "benzoquinone reductase"
+
+  peptidoglycanase:
+    description: "Peptidoglycanases — degrade bacterial cell wall peptidoglycan (microbial necromass)"
+    # Substrate: bacterial cell wall peptidoglycan. Includes lysozymes, lytic transglycosylases,
+    # and phage endolysins. Included per López-Mondéjar et al. (2022) Table S3.
+    families:
+      - GH22    # lysozyme type C (EC 3.2.1.17) — hen egg white lysozyme type
+      - GH23    # lysozyme type G (EC 3.2.1.17); peptidoglycan lytic transglycosylase
+      - GH24    # lysozyme (EC 3.2.1.17) — bacteriophage T4 type
+      - GH25    # lysozyme (EC 3.2.1.17)
+      - GH73    # lysozyme (EC 3.2.1.17); peptidoglycan hydrolase
+      - GH102   # peptidoglycan lytic transglycosylase (EC 4.2.2.n1)
+      - GH103   # peptidoglycan lytic transglycosylase (EC 4.2.2.n1)
+      - GH104   # peptidoglycan lytic transglycosylase (EC 4.2.2.n1)
+      - GH108   # N-acetylmuramidase (EC 3.2.1.17)
+      - GH153  # PNAG N-deacetylase (biofilm polysaccharide)      - CE9    # N-acetylglucosamine-6-phosphate deacetylase (EC 3.5.1.25) — GlcNAc recycling from peptidoglycan
+    patterns:
+      - "lysozyme"
+      - "muramidase"
+      - "N-acetylmuramidase"
+      - "peptidoglycan.*hydrolase"
+      - "lytic transglycosylase"
+
+  oxidative_enzymes:
+    description: "Lytic polysaccharide monooxygenases (LPMOs) and accessory oxidoreductases"
+    families:
+      - AA8    # iron reductase / cytochrome b domain — electron donor to AA9 LPMOs
+      - AA9    # LPMO on cellulose (fungal; formerly GH61)
+      - GH61   # former name for AA9 LPMOs; FamInfo lists endoglucanase (EC 3.2.1.4) but these are oxidative enzymes, not cellulases
+      - AA10   # LPMO on cellulose and chitin (bacterial; formerly CBM33)
+
+      - AA11   # LPMO on chitin (EC 1.14.99.-)
+      - AA13   # LPMO on starch (EC 1.14.99.-)
+      - AA14   # LPMO on xylan (EC 1.14.99.-)
+      - AA15   # LPMO on cellulose and chitin (eukaryotic)
+      - AA16   # LPMO on cellulose (EC 1.14.99.-)
+    patterns:
+      - "lytic polysaccharide monooxygenase"
+      - "LPMO"
+      - "copper.*monooxygenase"
