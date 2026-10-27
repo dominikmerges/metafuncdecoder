@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 import yaml
 
-VERSION = "1.0.0"
+VERSION = "2.0.0"
 
 # Script directory — used to resolve default database and category paths
 # regardless of the working directory the user invokes the tool from.
