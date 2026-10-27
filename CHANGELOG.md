@@ -2,6 +2,12 @@
 
 All notable changes to MetaFuncDecoder are documented here.
 
+## [Unreleased]
+
+### Fixed
+
+- `carbon_cycling.yaml`: CE9 was inside the GH153 comment and so missing from the `peptidoglycanase` subcategory; it is now listed, matching Merges et al. 2026 AEM, Table S15.
+
 ## [1.0.0] — 2026-03-13
 
 Initial public release.

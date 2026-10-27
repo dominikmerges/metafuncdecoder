@@ -1095,3 +1095,10 @@ class TestExcludeBroad:
         decoder.save_results(str(tmp_path), exclude_broad=False, functions=["carbon_cycling"])
         out = pd.read_csv(tmp_path / "metagenome_confidence_annotations.csv")
         assert "gene_broad" in out["gene_id"].values
+
+
+def test_ce9_in_peptidoglycanase_subcategory():
+    """CE9 must be a list entry, not swallowed by the GH153 comment."""
+    cats = load_categories(str(Path(__file__).parent.parent / "categories"))
+    fams = cats["carbon_cycling"]["cazy_subcategories"]["peptidoglycanase"]["families"]
+    assert "CE9" in fams

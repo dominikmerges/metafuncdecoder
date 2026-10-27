@@ -627,7 +627,8 @@ cazy_subcategories:
       - GH103   # peptidoglycan lytic transglycosylase (EC 4.2.2.n1)
       - GH104   # peptidoglycan lytic transglycosylase (EC 4.2.2.n1)
       - GH108   # N-acetylmuramidase (EC 3.2.1.17)
-      - GH153  # PNAG N-deacetylase (biofilm polysaccharide)      - CE9    # N-acetylglucosamine-6-phosphate deacetylase (EC 3.5.1.25) — GlcNAc recycling from peptidoglycan
+      - GH153  # PNAG N-deacetylase (biofilm polysaccharide)
+      - CE9    # N-acetylglucosamine-6-phosphate deacetylase (EC 3.5.1.25) — GlcNAc recycling from peptidoglycan
     patterns:
       - "lysozyme"
       - "muramidase"
