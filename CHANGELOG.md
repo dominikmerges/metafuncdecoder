@@ -10,7 +10,7 @@ All notable changes to MetaFuncDecoder are documented here.
 
 ### Removed
 
-- **`confidence_level` and `confidence_score` columns.** Both were fixed relabelings of `n_databases` (3/2/1/0 → high/medium/low/none, 1.0/0.67/0.33/0) and suggested a calibrated confidence that does not exist. Use `n_databases` and `subcategory_n_databases` instead. Breaking change for scripts that read these columns.
+- **`confidence_level` and `confidence_score` columns.** Use `n_databases` and `subcategory_n_databases` instead. Breaking change for scripts that read these columns.
 
 ### Changed
 

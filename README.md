@@ -200,10 +200,10 @@ functional category matched; genes with no match are omitted by default (use
 
 ### Database support
 
-Evidence is reported as counts, not as a confidence score: `n_databases` for the
-broad category and `subcategory_n_databases` for the subcategory. These counts
-are not calibrated probabilities. The databases are not fully independent
-(e.g. CAZy and Pfam glycoside-hydrolase models overlap), and categories without
+Evidence is reported as counts: `n_databases` for the
+broad category and `subcategory_n_databases` for the subcategory.
+
+Categories without
 a CAZy component (nitrogen cycling, antibiotics) can reach at most 2.
 
 ### Reproducibility and provenance
