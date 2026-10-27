@@ -64,6 +64,21 @@ def _parse_patterns(raw_list) -> list:
     return result
 
 
+def viral_cazy_role(cazy_families: str, roles: Dict[str, List[str]]) -> str:
+    """First role (in YAML order) matching a family; [] matches unlisted families."""
+    listed = {f for members in roles.values() for f in members}
+    fams = []
+    for token in str(cazy_families or "").split(";"):
+        m = re.match(r"([A-Z]+\d+)(_\d+)?", token.strip())
+        if m:
+            fams.append({m.group(0), m.group(1)})
+    for role, members in roles.items():
+        for f in fams:
+            if (f & set(members)) if members else not (f & listed):
+                return role
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # Category loading
 # ---------------------------------------------------------------------------
@@ -104,6 +119,7 @@ def load_categories(categories_dir: str) -> Dict[str, Any]:
                 "pfam_patterns": cat_def.get("pfam_patterns") or [],
                 "pfam_go_terms": cat_def.get("pfam_go_terms") or [],
                 "cazy_subcategories": cat_def.get("cazy_subcategories") or {},
+                "viral_cazy_roles": cat_def.get("viral_cazy_roles") or {},
             }
             n_cazy = len(categories[cat_name]["cazy_subcategories"])
             n_kegg = len(categories[cat_name]["kegg_patterns"])
@@ -784,6 +800,20 @@ class MetaFuncDecoder:
                 f"    {len(self.annotations[dataset_name + '_confidence'])} confidence records"
             )
 
+    def add_viral_cazy_roles(self) -> None:
+        """Add a viral_cazy_role column to every result table (--viral)."""
+        roles = {}
+        for cfg in self._categories.values():
+            roles.update(cfg.get("viral_cazy_roles") or {})
+        if not roles:
+            print("Warning: --viral set but no viral_cazy_roles found in category YAMLs")
+            return
+        for name, df in self.annotations.items():
+            if "_confidence" in name and "cazy_families" in df.columns:
+                df["viral_cazy_role"] = df["cazy_families"].map(
+                    lambda f: viral_cazy_role(f, roles)
+                )
+
     def _generate_confidence_annotations(
         self, df: pd.DataFrame, min_cazy_tools: int = 1
     ) -> pd.DataFrame:
@@ -1239,6 +1269,13 @@ Examples:
         ),
     )
     parser.add_argument(
+        "--viral", action="store_true",
+        help=(
+            "Add a viral_cazy_role column: the known phage role of each CAZy family, "
+            "as defined under viral_cazy_roles in the category YAMLs"
+        ),
+    )
+    parser.add_argument(
         "--allow-missing-cols", action="store_true",
         help=(
             "Combined mode only: skip missing annotation columns with a warning instead of "
@@ -1331,6 +1368,8 @@ Examples:
 
     # Analyse
     decoder.standardize_annotations(min_cazy_tools=args.cazy_min_tools)
+    if args.viral:
+        decoder.add_viral_cazy_roles()
 
     # Resolve --function all → every loaded category
     if args.function == ["all"]:

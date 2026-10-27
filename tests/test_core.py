@@ -21,6 +21,7 @@ from metafuncdecoder import (
     KEGGMapper,
     Pfam2GOMapper,
     load_categories,
+    viral_cazy_role,
 )
 
 
@@ -1097,8 +1098,52 @@ class TestExcludeBroad:
         assert "gene_broad" in out["gene_id"].values
 
 
+
 def test_ce9_in_peptidoglycanase_subcategory():
     """CE9 must be a list entry, not swallowed by the GH153 comment."""
     cats = load_categories(str(Path(__file__).parent.parent / "categories"))
     fams = cats["carbon_cycling"]["cazy_subcategories"]["peptidoglycanase"]["families"]
     assert "CE9" in fams
+
+class TestViralCazyRole:
+    """--viral: roles come from viral_cazy_roles in carbon_cycling.yaml."""
+
+    @pytest.fixture(scope="class")
+    def roles(self):
+        cats = load_categories(str(Path(__file__).parent.parent / "categories"))
+        return cats["carbon_cycling"]["viral_cazy_roles"]
+
+    @pytest.mark.parametrize("families,expected", [
+        ("GH24", "peptidoglycanase_lysis"),
+        ("GH19", "virion_structural_or_lysis"),
+        ("PL7_5", "virion_structural_or_lysis"),
+        ("GH16", "polysaccharide_degrading"),
+        ("CBM50", "non_catalytic_cbm"),
+        ("CBM50;GH19", "virion_structural_or_lysis"),
+        ("CBM32;GH18", "polysaccharide_degrading"),
+        ("", ""),
+        (None, ""),
+    ])
+    def test_role(self, roles, families, expected):
+        assert viral_cazy_role(families, roles) == expected
+
+    def test_column_added_only_when_requested(self, roles):
+        import pandas as pd
+        cats = {
+            "carbon_cycling": {
+                "kegg_patterns": [], "pfam_patterns": [], "pfam_go_terms": [],
+                "cazy_subcategories": {"chitinase": {"families": ["GH19", "GH18"]}},
+                "viral_cazy_roles": roles,
+            },
+        }
+        d = MetaFuncDecoder(cats)
+        d.data["v"] = pd.DataFrame([
+            {"gene_id": "g1", "kegg_ortholog": None, "pfam": None, "cazyme": "GH19"},
+            {"gene_id": "g2", "kegg_ortholog": None, "pfam": None, "cazyme": "GH18"},
+        ])
+        d.standardize_annotations()
+        assert "viral_cazy_role" not in d.annotations["v_confidence"].columns
+        d.add_viral_cazy_roles()
+        out = d.annotations["v_confidence"].set_index("gene_id")["viral_cazy_role"]
+        assert out["g1"] == "virion_structural_or_lysis"
+        assert out["g2"] == "polysaccharide_degrading"

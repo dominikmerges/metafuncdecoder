@@ -198,6 +198,7 @@ functional category matched; genes with no match are omitted by default (use
 | `n_databases` | Number of databases that independently support the annotation (1–3) |
 | `confidence_level` | `high` / `medium` / `low` / `none` (see table below) |
 | `confidence_score` | Numeric confidence: 1.0 / 0.67 / 0.33 / 0.0 |
+| `viral_cazy_role` | Only with `--viral`. Known role of the row's CAZy family in phages; see [Viral contigs](#viral-contigs---viral). Empty when the row has no CAZy family. |
 
 ### Confidence scoring
 
@@ -219,6 +220,34 @@ Every run writes a `run_manifest.json` alongside the output CSV. This file recor
 Keep `run_manifest.json` alongside the result CSV when archiving data for publication.
 It allows any run to be exactly reproduced or audited without relying on memory of
 which database version was used.
+
+### Viral contigs (`--viral`)
+
+On viral contigs, many CAZy hits are lysis or virion-structural proteins, not
+auxiliary metabolic genes (AMGs). `--viral` adds a `viral_cazy_role` column that
+labels each CAZy family using the curated sets in Merges et al. 2026, *AEM*,
+Supplementary Table S15:
+
+| `viral_cazy_role` | Families | Table S6/S7 class |
+|---|---|---|
+| `peptidoglycanase_lysis` | GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9 | Peptidoglycanase (lysis), excluded from the AMG set |
+| `virion_structural_or_lysis` | GH19, PL1, PL1_2, PL6, PL7, PL9, PL14, GH28 | Documented virion-structural or lysis role |
+| `non_catalytic_cbm` | CBM9, CBM12, CBM13, CBM32, CBM35, CBM50, CBM61, CBM67 | Non-catalytic binding module |
+| `polysaccharide_degrading` | any other CAZy family | Polysaccharide-degrading, no viral structural role reported |
+| *(empty)* | no CAZy family | No CAZy family (KEGG/Pfam only) |
+
+The sets live under `viral_cazy_roles` at the end of
+`categories/carbon_cycling.yaml` and can be edited there. Roles are checked in
+file order, so any lysis-associated family flags the gene; an empty list stands
+for every family not listed elsewhere. Subfamilies fall back to their family
+(e.g. `PL7_5` → `PL7`).
+
+The label describes the family, not the gene. GH19 in particular remains
+ambiguous between chitinase and endolysin; in the paper, most cassette-eligible
+GH19 genes sat next to a holin/spanin (Tables S8–S9), which favours a lysis role
+but needs gene order to test. MetaFuncDecoder does not use gene order.
+Typical use: keep `polysaccharide_degrading` as candidate AMGs and report
+`virion_structural_or_lysis` separately.
 
 ### Interpreting low-confidence hits
 

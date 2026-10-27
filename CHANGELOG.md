@@ -4,6 +4,10 @@ All notable changes to MetaFuncDecoder are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- **`--viral`**: adds a `viral_cazy_role` column labelling each CAZy family by its known phage role (`peptidoglycanase_lysis`, `virion_structural_or_lysis`, `polysaccharide_degrading`, `non_catalytic_cbm`). Family sets fixed to Merges et al. 2026 AEM, Table S15. Off by default; output is unchanged without the flag.
+
 ### Fixed
 
 - `carbon_cycling.yaml`: CE9 was inside the GH153 comment and so missing from the `peptidoglycanase` subcategory; it is now listed, matching Merges et al. 2026 AEM, Table S15.
