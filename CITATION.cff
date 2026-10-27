@@ -5,7 +5,7 @@ title: MetaFuncDecoder
 abstract: >
   User-friendly functional annotation interpretation for annotated metagenomes.
   Maps KO terms, Pfam IDs, and CAZy family assignments to functional categories
-  with cross-database confidence scoring.
+  with cross-database evidence counts.
 authors:
   - family-names: Merges
     given-names: Dominik

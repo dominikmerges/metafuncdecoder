@@ -327,11 +327,11 @@ class TestLoadCazyFile:
 
 
 # ---------------------------------------------------------------------------
-# 6. Confidence scoring
+# 6. Database counts
 # ---------------------------------------------------------------------------
 
-class TestConfidenceScoring:
-    """Test _generate_confidence_annotations via a minimal end-to-end run."""
+class TestDatabaseCounts:
+    """Test _generate_annotations via a minimal end-to-end run."""
 
     @pytest.fixture
     def decoder(self):
@@ -350,30 +350,28 @@ class TestConfidenceScoring:
     def _run(self, decoder, rows):
         import pandas as pd
         df = pd.DataFrame(rows)
-        return decoder._generate_confidence_annotations(df)
+        return decoder._generate_annotations(df)
 
-    def test_single_db_gives_low_confidence(self, decoder):
+    def test_single_db_counts_one(self, decoder):
         result = self._run(decoder, [
             {"gene_id": "g1", "kegg_ortholog": "KO:K01234", "pfam": None, "cazyme": None}
         ])
         hit = result[result["gene_id"] == "g1"]
-        assert hit.iloc[0]["confidence_level"] == "low"
-        assert hit.iloc[0]["confidence_score"] == 0.33
+        assert hit.iloc[0]["n_databases"] == 1
 
-    def test_two_dbs_give_medium_confidence(self, decoder):
+    def test_two_dbs_count_two(self, decoder):
         result = self._run(decoder, [
             {"gene_id": "g1", "kegg_ortholog": "KO:K01234", "pfam": None, "cazyme": "GH18",
              "cazy_ec": "3.2.1.14", "cazy_tools": "3"}
         ])
-        hit = result[(result["gene_id"] == "g1") & (result["confidence_level"] != "none")]
-        assert hit.iloc[0]["confidence_level"] == "medium"
-        assert hit.iloc[0]["confidence_score"] == pytest.approx(0.67)
+        hit = result[(result["gene_id"] == "g1") & (result["n_databases"] > 0)]
+        assert hit.iloc[0]["n_databases"] == 2
 
     def test_unannotated_gene_gets_none_row(self, decoder):
         result = self._run(decoder, [
             {"gene_id": "g_empty", "kegg_ortholog": None, "pfam": None, "cazyme": None}
         ])
-        assert result.iloc[0]["confidence_level"] == "none"
+        assert result.iloc[0]["n_databases"] == 0
         assert result.iloc[0]["functional_category"] == "unannotated"
 
     def test_supporting_databases_field(self, decoder):
@@ -381,7 +379,7 @@ class TestConfidenceScoring:
             {"gene_id": "g1", "kegg_ortholog": "KO:K01234", "pfam": None, "cazyme": "GH18",
              "cazy_ec": "", "cazy_tools": "2"}
         ])
-        hit = result[(result["gene_id"] == "g1") & (result["confidence_level"] != "none")]
+        hit = result[(result["gene_id"] == "g1") & (result["n_databases"] > 0)]
         dbs = set(hit.iloc[0]["supporting_databases"].split(";"))
         assert "KEGG" in dbs
         assert "CAZy" in dbs
@@ -391,7 +389,7 @@ class TestConfidenceScoring:
             {"gene_id": "g1", "kegg_ortholog": None, "pfam": None, "cazyme": "GH18",
              "cazy_ec": "3.2.1.14", "cazy_tools": "3"}
         ])
-        hit = result[(result["gene_id"] == "g1") & (result["confidence_level"] != "none")]
+        hit = result[(result["gene_id"] == "g1") & (result["n_databases"] > 0)]
         assert hit.iloc[0]["cazy_ec"] == "3.2.1.14"
         assert hit.iloc[0]["cazy_tool_count"] == "3"
 
@@ -400,7 +398,7 @@ class TestConfidenceScoring:
             {"gene_id": "g1", "kegg_ortholog": "KO:K05678", "pfam": None, "cazyme": None}
         ])
         # K05678 definition ("unrelated enzyme") matches no category pattern
-        assert result.iloc[0]["confidence_level"] == "none"
+        assert result.iloc[0]["n_databases"] == 0
 
     def test_multiple_genes_processed_independently(self, decoder):
         result = self._run(decoder, [
@@ -410,8 +408,8 @@ class TestConfidenceScoring:
         assert len(result[result["gene_id"] == "g1"]) >= 1
         assert len(result[result["gene_id"] == "g2"]) == 1
 
-    def test_three_dbs_give_high_confidence(self, decoder):
-        """All three databases agreeing on carbon_cycling must produce confidence=high (1.0)."""
+    def test_three_dbs_count_three(self, decoder):
+        """All three databases agreeing on carbon_cycling must give n_databases=3."""
         # Inject a Pfam2GO mapping that maps PF00001 → GO:0005975 (carbohydrate metabolic)
         decoder.pfam_mapper.pfam2go = {
             "PF00001": [{"go_id": "GO:0005975", "go_name": "carbohydrate metabolic process"}]
@@ -431,8 +429,6 @@ class TestConfidenceScoring:
             (result["functional_category"] == "carbon_cycling")
         ]
         assert len(hit) == 1, "Expected one carbon_cycling row for three-DB gene"
-        assert hit.iloc[0]["confidence_level"] == "high"
-        assert hit.iloc[0]["confidence_score"] == pytest.approx(1.0)
         assert hit.iloc[0]["n_databases"] == 3
         dbs = set(hit.iloc[0]["supporting_databases"].split(";"))
         assert dbs == {"CAZy", "Pfam", "KEGG"}
@@ -631,8 +627,6 @@ class TestIncludeUnannotatedWithFunctionFilter:
             {
                 "gene_id": "gene_001",
                 "functional_category": "carbon_cycling",
-                "confidence_level": "low",
-                "confidence_score": 0.33,
                 "subcategories": "",
                 "cazy_families": "",
                 "cazy_ec": "",
@@ -648,8 +642,6 @@ class TestIncludeUnannotatedWithFunctionFilter:
             {
                 "gene_id": "gene_002",
                 "functional_category": "unannotated",
-                "confidence_level": "none",
-                "confidence_score": 0.0,
                 "subcategories": "",
                 "cazy_families": "",
                 "cazy_ec": "",
@@ -663,13 +655,13 @@ class TestIncludeUnannotatedWithFunctionFilter:
                 "n_databases": 0,
             },
         ]
-        decoder.annotations["metagenome_confidence"] = pd.DataFrame(rows)
+        decoder.annotations["metagenome"] = pd.DataFrame(rows)
         decoder.save_results(
             str(tmp_path),
             include_unannotated=True,
             functions=["carbon_cycling"],
         )
-        out = pd.read_csv(tmp_path / "metagenome_confidence_annotations.csv")
+        out = pd.read_csv(tmp_path / "metagenome_annotations.csv")
         assert "gene_001" in out["gene_id"].values, "annotated gene must be present"
         assert "gene_002" in out["gene_id"].values, \
             "unannotated gene must be retained when include_unannotated=True"
@@ -767,7 +759,7 @@ class TestSubcategoryNDatabases:
 
     def _run(self, decoder, rows):
         import pandas as pd
-        return decoder._generate_confidence_annotations(pd.DataFrame(rows))
+        return decoder._generate_annotations(pd.DataFrame(rows))
 
     def test_subcategory_n_databases_two_dbs_agree(self, decoder):
         """KEGG + CAZy both resolve to 'chitinase' subcategory → subcategory_n_databases = 2."""
@@ -892,7 +884,7 @@ class TestEvidenceSpecificity:
 
     def _run(self, decoder, rows):
         import pandas as pd
-        return decoder._generate_confidence_annotations(pd.DataFrame(rows))
+        return decoder._generate_annotations(pd.DataFrame(rows))
 
     def test_specific_hit_gives_specific(self, decoder):
         """KEGG hit matching a labelled subcategory pattern → evidence_specificity='specific'."""
@@ -932,7 +924,7 @@ class TestEvidenceSpecificity:
 
 class TestCazyMinTools:
     """--cazy-min-tools must drop CAZy families whose tool count falls below
-    the threshold before they contribute to the confidence model."""
+    the threshold before they count as CAZy evidence."""
 
     @pytest.fixture
     def decoder(self):
@@ -944,7 +936,7 @@ class TestCazyMinTools:
 
     def _run(self, decoder, rows, min_cazy_tools=1):
         import pandas as pd
-        return decoder._generate_confidence_annotations(
+        return decoder._generate_annotations(
             pd.DataFrame(rows), min_cazy_tools=min_cazy_tools
         )
 
@@ -959,7 +951,7 @@ class TestCazyMinTools:
             "cazy_tools": "1",
         }], min_cazy_tools=2)
         # CAZy evidence dropped → no annotated row
-        assert result.iloc[0]["confidence_level"] == "none"
+        assert result.iloc[0]["n_databases"] == 0
 
     def test_cazy_at_threshold_included(self, decoder):
         """GH18 with 2 tools must be included when min_cazy_tools=2."""
@@ -971,7 +963,7 @@ class TestCazyMinTools:
             "cazy_ec": "",
             "cazy_tools": "2",
         }], min_cazy_tools=2)
-        hit = result[result["confidence_level"] != "none"]
+        hit = result[result["n_databases"] > 0]
         assert len(hit) == 1
 
     def test_min_tools_1_passes_all(self, decoder):
@@ -984,7 +976,7 @@ class TestCazyMinTools:
             "cazy_ec": "",
             "cazy_tools": "1",
         }], min_cazy_tools=1)
-        hit = result[result["confidence_level"] != "none"]
+        hit = result[result["n_databases"] > 0]
         assert len(hit) == 1
 
     def test_missing_tool_count_passes_through(self, decoder):
@@ -998,7 +990,7 @@ class TestCazyMinTools:
             "cazy_ec": "",
             "cazy_tools": "",   # empty — no tool count available
         }], min_cazy_tools=3)
-        hit = result[result["confidence_level"] != "none"]
+        hit = result[result["n_databases"] > 0]
         assert len(hit) == 1
 
     def test_float_formatted_tool_count_filtered(self, decoder):
@@ -1013,7 +1005,7 @@ class TestCazyMinTools:
             "cazy_ec": "",
             "cazy_tools": "3.0",   # float-formatted, common in pandas/R output
         }], min_cazy_tools=4)
-        assert result.iloc[0]["confidence_level"] == "none"
+        assert result.iloc[0]["n_databases"] == 0
 
     def test_float_formatted_tool_count_passes_when_above_threshold(self, decoder):
         """cazy_tools='3.0' with min_cazy_tools=2 must pass through (3 >= 2)."""
@@ -1025,7 +1017,7 @@ class TestCazyMinTools:
             "cazy_ec": "",
             "cazy_tools": "3.0",
         }], min_cazy_tools=2)
-        hit = result[result["confidence_level"] != "none"]
+        hit = result[result["n_databases"] > 0]
         assert len(hit) == 1
 
 
@@ -1044,8 +1036,6 @@ class TestExcludeBroad:
                 "gene_id": "gene_specific",
                 "functional_category": "carbon_cycling",
                 "evidence_specificity": "specific",
-                "confidence_level": "low",
-                "confidence_score": 0.33,
                 "subcategories": "chitinase",
                 "subcategory_n_databases": 1,
                 "cazy_families": "", "cazy_subfamilies": "", "cazy_ec": "",
@@ -1057,8 +1047,6 @@ class TestExcludeBroad:
                 "gene_id": "gene_broad",
                 "functional_category": "carbon_cycling",
                 "evidence_specificity": "broad",
-                "confidence_level": "low",
-                "confidence_score": 0.33,
                 "subcategories": "",
                 "subcategory_n_databases": 0,
                 "cazy_families": "", "cazy_subfamilies": "", "cazy_ec": "",
@@ -1068,9 +1056,9 @@ class TestExcludeBroad:
                 "supporting_databases": "Pfam", "n_databases": 1,
             },
         ]
-        decoder.annotations["metagenome_confidence"] = pd.DataFrame(rows)
+        decoder.annotations["metagenome"] = pd.DataFrame(rows)
         decoder.save_results(str(tmp_path), exclude_broad=True, functions=["carbon_cycling"])
-        out = pd.read_csv(tmp_path / "metagenome_confidence_annotations.csv")
+        out = pd.read_csv(tmp_path / "metagenome_annotations.csv")
         assert "gene_specific" in out["gene_id"].values
         assert "gene_broad" not in out["gene_id"].values
 
@@ -1081,8 +1069,6 @@ class TestExcludeBroad:
                 "gene_id": "gene_broad",
                 "functional_category": "carbon_cycling",
                 "evidence_specificity": "broad",
-                "confidence_level": "low",
-                "confidence_score": 0.33,
                 "subcategories": "",
                 "subcategory_n_databases": 0,
                 "cazy_families": "", "cazy_subfamilies": "", "cazy_ec": "",
@@ -1092,9 +1078,9 @@ class TestExcludeBroad:
                 "supporting_databases": "Pfam", "n_databases": 1,
             },
         ]
-        decoder.annotations["metagenome_confidence"] = pd.DataFrame(rows)
+        decoder.annotations["metagenome"] = pd.DataFrame(rows)
         decoder.save_results(str(tmp_path), exclude_broad=False, functions=["carbon_cycling"])
-        out = pd.read_csv(tmp_path / "metagenome_confidence_annotations.csv")
+        out = pd.read_csv(tmp_path / "metagenome_annotations.csv")
         assert "gene_broad" in out["gene_id"].values
 
 
@@ -1142,8 +1128,8 @@ class TestViralCazyRole:
             {"gene_id": "g2", "kegg_ortholog": None, "pfam": None, "cazyme": "GH18"},
         ])
         d.standardize_annotations()
-        assert "viral_cazy_role" not in d.annotations["v_confidence"].columns
+        assert "viral_cazy_role" not in d.annotations["v"].columns
         d.add_viral_cazy_roles()
-        out = d.annotations["v_confidence"].set_index("gene_id")["viral_cazy_role"]
+        out = d.annotations["v"].set_index("gene_id")["viral_cazy_role"]
         assert out["g1"] == "virion_structural_or_lysis"
         assert out["g2"] == "polysaccharide_degrading"

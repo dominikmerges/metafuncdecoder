@@ -789,16 +789,14 @@ class MetaFuncDecoder:
     # --- annotation standardization ---------------------------------------
 
     def standardize_annotations(self, min_cazy_tools: int = 1) -> None:
-        """Generate confidence annotations for all loaded datasets."""
-        print("\nGenerating confidence annotations...")
+        """Generate per-gene annotations for all loaded datasets."""
+        print("\nGenerating annotations...")
         for dataset_name, df in self.data.items():
             print(f"  Processing {dataset_name}...")
-            self.annotations[f"{dataset_name}_confidence"] = (
-                self._generate_confidence_annotations(df, min_cazy_tools=min_cazy_tools)
+            self.annotations[dataset_name] = (
+                self._generate_annotations(df, min_cazy_tools=min_cazy_tools)
             )
-            print(
-                f"    {len(self.annotations[dataset_name + '_confidence'])} confidence records"
-            )
+            print(f"    {len(self.annotations[dataset_name])} records")
 
     def add_viral_cazy_roles(self) -> None:
         """Add a viral_cazy_role column to every result table (--viral)."""
@@ -809,15 +807,15 @@ class MetaFuncDecoder:
             print("Warning: --viral set but no viral_cazy_roles found in category YAMLs")
             return
         for name, df in self.annotations.items():
-            if "_confidence" in name and "cazy_families" in df.columns:
+            if "cazy_families" in df.columns:
                 df["viral_cazy_role"] = df["cazy_families"].map(
                     lambda f: viral_cazy_role(f, roles)
                 )
 
-    def _generate_confidence_annotations(
+    def _generate_annotations(
         self, df: pd.DataFrame, min_cazy_tools: int = 1
     ) -> pd.DataFrame:
-        """One record per gene per broad category, scored by database agreement."""
+        """One record per gene per broad category, with supporting-database counts."""
         records = []
         for idx, row in df.iterrows():
             base = {"gene_id": str(row.get("gene_id", ""))}
@@ -938,8 +936,6 @@ class MetaFuncDecoder:
                     "ko_definition": "",
                     "supporting_databases": "",
                     "n_databases": 0,
-                    "confidence_level": "none",
-                    "confidence_score": 0.0,
                 })
                 records.append(rec)
             else:
@@ -952,12 +948,6 @@ class MetaFuncDecoder:
                     if ev["ko_terms"]:
                         dbs.append("KEGG")
                     db_count = len(dbs)
-                    confidence_level = (
-                        "high" if db_count >= 3 else
-                        "medium" if db_count == 2 else
-                        "low" if db_count == 1 else
-                        "none"
-                    )
                     # Count databases that agree on each subcategory
                     subcat_db_counts = {}
                     for subcat in ev["subcategories"]:
@@ -987,8 +977,6 @@ class MetaFuncDecoder:
                         "ko_definition": " | ".join(ev["ko_definition"]),
                         "supporting_databases": ";".join(dbs),
                         "n_databases": db_count,
-                        "confidence_level": confidence_level,
-                        "confidence_score": {3: 1.0, 2: 0.67, 1: 0.33, 0: 0.0}[db_count],
                     })
                     records.append(rec)
 
@@ -1001,14 +989,11 @@ class MetaFuncDecoder:
         partition_results: Dict[str, int] = defaultdict(int)
         total = 0
 
-        for dataset_name, annotations in self.annotations.items():
-            if "_confidence" not in dataset_name:
-                continue
-            base = dataset_name.replace("_confidence", "")
+        for base, annotations in self.annotations.items():
             count = len(
                 annotations[
                     (annotations["functional_category"] == functional_category) &
-                    (annotations["confidence_level"] != "none")
+                    (annotations["n_databases"] > 0)
                 ]
             )
             partition_results[base] = count
@@ -1100,10 +1085,7 @@ class MetaFuncDecoder:
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
 
-        for name, annotations in self.annotations.items():
-            if "_confidence" not in name:
-                continue
-            base = name.replace("_confidence", "")
+        for base, annotations in self.annotations.items():
             if functions is not None:
                 keep = set(functions)
                 if include_unannotated:
@@ -1112,14 +1094,14 @@ class MetaFuncDecoder:
                     annotations["functional_category"].isin(keep)
                 ]
             elif not include_unannotated:
-                annotations = annotations[annotations["confidence_level"] != "none"]
+                annotations = annotations[annotations["n_databases"] > 0]
             if exclude_broad and "evidence_specificity" in annotations.columns:
                 before = len(annotations)
                 annotations = annotations[annotations["evidence_specificity"] != "broad"]
                 dropped = before - len(annotations)
                 if dropped:
                     print(f"  --exclude-broad: removed {dropped} broad-evidence rows from {base}")
-            outfile = out / f"{base}_confidence_annotations.csv"
+            outfile = out / f"{base}_annotations.csv"
             annotations.to_csv(outfile, index=False)
             print(f"{base}: {outfile}")
 
@@ -1239,7 +1221,7 @@ Examples:
     # Output
     parser.add_argument(
         "--dataset-name", default="metagenome",
-        help="Dataset name used in output filename: <name>_confidence_annotations.csv (default: metagenome)",
+        help="Dataset name used in output filename: <name>_annotations.csv (default: metagenome)",
     )
     parser.add_argument(
         "--output", default="results/",
@@ -1253,7 +1235,7 @@ Examples:
         "--cazy-min-tools", type=int, default=1, metavar="N",
         help=(
             "Minimum number of dbCAN tools that must agree on a CAZy family assignment "
-            "for it to contribute to the confidence model (default: 1, i.e. no filter). "
+            "for it to count as CAZy evidence (default: 1, i.e. no filter). "
             "dbCAN recommends 2. Only applies when --cazy-file is used or when the "
             "combined table contains a cazy_tools column."
         ),

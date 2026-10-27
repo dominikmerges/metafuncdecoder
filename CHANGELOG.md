@@ -8,6 +8,14 @@ All notable changes to MetaFuncDecoder are documented here.
 
 - **`--viral`**: adds a `viral_cazy_role` column labelling each CAZy family by its known phage role (`peptidoglycanase_lysis`, `virion_structural_or_lysis`, `polysaccharide_degrading`, `non_catalytic_cbm`). Family sets fixed to Merges et al. 2026 AEM, Table S15. Off by default; output is unchanged without the flag.
 
+### Removed
+
+- **`confidence_level` and `confidence_score` columns.** Both were fixed relabelings of `n_databases` (3/2/1/0 → high/medium/low/none, 1.0/0.67/0.33/0) and suggested a calibrated confidence that does not exist. Use `n_databases` and `subcategory_n_databases` instead. Breaking change for scripts that read these columns.
+
+### Changed
+
+- **Output file renamed** from `<dataset>_confidence_annotations.csv` to `<dataset>_annotations.csv`. Breaking change for pipelines that expect the old name.
+
 ### Fixed
 
 - `carbon_cycling.yaml`: CE9 was inside the GH153 comment and so missing from the `peptidoglycanase` subcategory; it is now listed, matching Merges et al. 2026 AEM, Table S15.

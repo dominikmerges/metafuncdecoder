@@ -37,7 +37,7 @@ python metafuncdecoder.py \
   --function carbon_cycling
 ```
 
-Expected output: `results/example/metagenome_confidence_annotations.csv`
+Expected output: `results/example/metagenome_annotations.csv`
 
 ## Source
 

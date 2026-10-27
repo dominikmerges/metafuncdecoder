@@ -2,7 +2,7 @@
 
 MetaFuncDecoder converts raw functional annotations (KO terms, Pfam IDs, CAZy families)
 from JGI KOfamScan, HMMER Pfam, and dbCAN files into ecologically interpretable
-functional profiles with cross-database confidence scoring.
+functional profiles, recording which databases support each call.
 
 ## What it does
 
@@ -11,7 +11,7 @@ Many (meta)genome annotation pipelines produce files full of identifiers
 
 1. Loads annotation files from JGI, HMMER, dbCAN, or a pre-merged table
 2. Maps identifiers to functional categories defined in user-editable YAML files
-3. Scores confidence based on how many databases agree on the same category
+3. Counts how many databases (KEGG, Pfam, CAZy) support each category and subcategory
 4. Outputs a single CSV with one row per gene per matched category, including subcategory labels and evidence from each database
 
 Functional categories are defined in plain YAML files that can be copied and
@@ -118,7 +118,7 @@ filter. Whether hits are pre-filtered depends on how HMMER was run upstream:
   all hits in the output file can be treated as reliable.
 - **Without `--cut_ga`:** the file may contain low-scoring hits. Pre-filter the blout
   or domtblout file before passing it to MetaFuncDecoder, or treat Pfam-only
-  (`confidence_level = low`) calls with additional caution.
+  calls (`supporting_databases = Pfam`) with additional caution.
 
 JGI annotation pipelines typically apply gathering cutoffs, so JGI blout files are
 generally pre-filtered. If you are unsure, check the HMMER command used to generate
@@ -171,7 +171,7 @@ Total annotations: 5683
 ### CSV output
 
 All CSV outputs go to `--output` (default: `results/`).
-The output file is named `<dataset>_confidence_annotations.csv`, where `<dataset>` is
+The output file is named `<dataset>_annotations.csv`, where `<dataset>` is
 `metagenome` by default and can be set with `--dataset-name`. One row is written per gene per
 functional category matched; genes with no match are omitted by default (use
 `--include-unannotated` to retain them).
@@ -196,18 +196,15 @@ functional category matched; genes with no match are omitted by default (use
 | `ko_definition` | KO definition string from the KEGG `ko_list` |
 | `supporting_databases` | Which databases provided evidence, semicolon-separated (`CAZy`, `Pfam`, `KEGG`) |
 | `n_databases` | Number of databases that independently support the annotation (1–3) |
-| `confidence_level` | `high` / `medium` / `low` / `none` (see table below) |
-| `confidence_score` | Numeric confidence: 1.0 / 0.67 / 0.33 / 0.0 |
 | `viral_cazy_role` | Only with `--viral`. Known role of the row's CAZy family in phages; see [Viral contigs](#viral-contigs---viral). Empty when the row has no CAZy family. |
 
-### Confidence scoring
+### Database support
 
-| Level | Meaning | Score |
-|-------|---------|-------|
-| high | All 3 databases agree | 1.0 |
-| medium | 2 databases agree | 0.67 |
-| low | 1 database | 0.33 |
-| none | No functional annotation | 0.0 |
+Evidence is reported as counts, not as a confidence score: `n_databases` for the
+broad category and `subcategory_n_databases` for the subcategory. These counts
+are not calibrated probabilities. The databases are not fully independent
+(e.g. CAZy and Pfam glycoside-hydrolase models overlap), and categories without
+a CAZy component (nitrogen cycling, antibiotics) can reach at most 2.
 
 ### Reproducibility and provenance
 
@@ -249,9 +246,9 @@ but needs gene order to test. MetaFuncDecoder does not use gene order.
 Typical use: keep `polysaccharide_degrading` as candidate AMGs and report
 `virion_structural_or_lysis` separately.
 
-### Interpreting low-confidence hits
+### Interpreting single-database hits
 
-`low` confidence (single-database) hits include two distinct types of evidence,
+Single-database hits (`n_databases = 1`) include two distinct types of evidence,
 distinguished by the `evidence_specificity` column:
 
 - **`specific`**: the gene matched a substrate-specific pattern — a named enzyme KO
@@ -272,9 +269,9 @@ python metafuncdecoder.py --ko-file my.ko --function all --exclude-broad
 # Post-hoc in Python
 df = df[df["evidence_specificity"] != "broad"]
 
-# Or keep only medium/high confidence (which also excludes all broad hits,
-# since broad hits are always single-database and therefore always low confidence)
-df = df[df["confidence_level"].isin(["medium", "high"])]
+# Or keep only multi-database calls (which also excludes all broad hits,
+# since broad hits are always single-database)
+df = df[df["n_databases"] >= 2]
 ```
 
 ## Functional categories
