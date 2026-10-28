@@ -1109,7 +1109,8 @@ class TestViralCazyRole:
         ("CBM50;GH19", "virion_structural_or_lysis"),
         ("CBM32;GH18", "polysaccharide_degrading"),
         # catch-all no longer swallows non-degrading classes
-        ("AA1", "other_cazy"),
+        ("AA7", "polysaccharide_degrading"),  # Table S6
+        ("AA3", "polysaccharide_degrading"),
         ("GT2", "other_cazy"),
         ("CBM5", "other_cazy"),
         # '+'-joined domains, either order
