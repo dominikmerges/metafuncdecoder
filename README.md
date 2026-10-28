@@ -233,7 +233,9 @@ Supplementary Table S15, and the family classes of Tables S6/S7:
 | *(empty)* | none | Gene has no CAZy hit (after `--cazy-min-tools`) |
 
 The role is assigned per gene from all of its CAZy hits, including families
-that map to no category, and is repeated on every row of that gene. A gene
+that map to no category, and is repeated on every row of that gene. A row can
+therefore carry a role while its `cazy_families` cell is empty: for example, a
+gene kept for its Pfam hit whose only CAZy hit is GT11 shows `other_cazy`. A gene
 with several families takes the role listed highest in the table, so any
 lysis-associated family flags the gene. Genes whose only CAZy hits map to
 no category (e.g. CBM50 alone) are labelled but sit on `unannotated` rows,
