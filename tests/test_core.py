@@ -21,7 +21,8 @@ from metafuncdecoder import (
     KEGGMapper,
     Pfam2GOMapper,
     load_categories,
-    viral_cazy_role,
+    parse_cazy_id,
+    ViralCazyRoles,
 )
 
 
@@ -1107,25 +1108,59 @@ class TestViralCazyRole:
         ("CBM50", "non_catalytic_cbm"),
         ("CBM50;GH19", "virion_structural_or_lysis"),
         ("CBM32;GH18", "polysaccharide_degrading"),
+        # catch-all no longer swallows non-degrading classes
+        ("AA1", "other_cazy"),
+        ("GT2", "other_cazy"),
+        ("CBM5", "other_cazy"),
+        # '+'-joined domains, either order
+        ("CBM50+GH24", "peptidoglycanase_lysis"),
+        ("GH24+CBM50", "peptidoglycanase_lysis"),
+        ("GH24(1-150)", "peptidoglycanase_lysis"),
         ("", ""),
         (None, ""),
     ])
     def test_role(self, roles, families, expected):
-        assert viral_cazy_role(families, roles) == expected
+        assert ViralCazyRoles(roles).role_of_field(families) == expected
 
-    def test_column_added_only_when_requested(self, roles):
-        import pandas as pd
+    def test_subfamily_entry_beats_family(self):
+        c = ViralCazyRoles({"a": ["GH16_3"], "b": ["GH16"], "c": []})
+        assert c.role([("GH16", "GH16_3")]) == "a"
+        assert c.role([("GH16", "GH16_1")]) == "b"
+        c = ViralCazyRoles({"a": ["GH16"], "b": ["GH16_3"]})
+        assert c.role([("GH16", "GH16_3")]) == "b"
+
+    def test_parse_cazy_id(self):
+        assert parse_cazy_id("GH5_e12") == ("GH5", "GH5_e12")
+        assert parse_cazy_id("GH24(3-120)") == ("GH24", "")
+        assert parse_cazy_id("-") is None
+
+    @staticmethod
+    def _decoder(roles, extra=None):
         cats = {
             "carbon_cycling": {
                 "kegg_patterns": [], "pfam_patterns": [], "pfam_go_terms": [],
-                "cazy_subcategories": {"chitinase": {"families": ["GH19", "GH18"]}},
+                "cazy_subcategories": {"chitinase": {"families": ["GH19", "GH18", "GH24"]}},
                 "viral_cazy_roles": roles,
             },
+            "nitrogen_cycling": {
+                "kegg_patterns": ["nitrogenase"], "pfam_patterns": [], "pfam_go_terms": [],
+                "cazy_subcategories": {},
+            },
         }
+        cats.update(extra or {})
         d = MetaFuncDecoder(cats)
+        d.kegg_mapper.kegg_info["K02588"] = {"definition": "nitrogenase iron protein"}
+        return d
+
+    def test_column_added_only_when_requested(self, roles):
+        import pandas as pd
+        d = self._decoder(roles)
         d.data["v"] = pd.DataFrame([
             {"gene_id": "g1", "kegg_ortholog": None, "pfam": None, "cazyme": "GH19"},
             {"gene_id": "g2", "kegg_ortholog": None, "pfam": None, "cazyme": "GH18"},
+            # CBM50 maps to no category: the gene is 'unannotated' but keeps its role
+            {"gene_id": "g3", "kegg_ortholog": None, "pfam": None, "cazyme": "CBM50"},
+            {"gene_id": "g4", "kegg_ortholog": "K02588", "pfam": None, "cazyme": None},
         ])
         d.standardize_annotations()
         assert "viral_cazy_role" not in d.annotations["v"].columns
@@ -1133,3 +1168,62 @@ class TestViralCazyRole:
         out = d.annotations["v"].set_index("gene_id")["viral_cazy_role"]
         assert out["g1"] == "virion_structural_or_lysis"
         assert out["g2"] == "polysaccharide_degrading"
+        assert out["g3"] == "non_catalytic_cbm"
+        assert out["g4"] == ""
+
+    def test_role_is_per_gene_across_category_rows(self, roles):
+        import pandas as pd
+        d = self._decoder(roles)
+        d.data["v"] = pd.DataFrame([
+            {"gene_id": "g1", "kegg_ortholog": "K02588", "pfam": None, "cazyme": "GH24"},
+        ])
+        d.standardize_annotations()
+        d.add_viral_cazy_roles()
+        ann = d.annotations["v"]
+        assert set(ann["functional_category"]) == {"carbon_cycling", "nitrogen_cycling"}
+        assert set(ann["viral_cazy_role"]) == {"peptidoglycanase_lysis"}
+
+    def test_min_tools_filter_applies(self, roles):
+        import pandas as pd
+        d = self._decoder(roles)
+        d.data["v"] = pd.DataFrame([{
+            "gene_id": "g1", "kegg_ortholog": None, "pfam": None,
+            "cazyme": "GH24;GH18", "cazy_tools": "1;3", "cazy_subfamilies": "",
+        }])
+        d.standardize_annotations(min_cazy_tools=2)
+        d.add_viral_cazy_roles()
+        assert d.annotations["v"]["viral_cazy_role"].tolist() == ["polysaccharide_degrading"]
+
+    def test_only_first_yaml_roles_used(self, roles, capsys):
+        import pandas as pd
+        extra = {"zz_custom": {
+            "kegg_patterns": [], "pfam_patterns": [], "pfam_go_terms": [],
+            "cazy_subcategories": {},
+            "viral_cazy_roles": {"peptidoglycanase_lysis": ["GH24"], "x": []},
+        }}
+        d = self._decoder(roles, extra)
+        d.data["v"] = pd.DataFrame([
+            {"gene_id": "g1", "kegg_ortholog": None, "pfam": None, "cazyme": "GH22"},
+        ])
+        d.standardize_annotations()
+        d.add_viral_cazy_roles()
+        assert "using carbon_cycling only" in capsys.readouterr().out
+        assert d.annotations["v"]["viral_cazy_role"].tolist() == ["peptidoglycanase_lysis"]
+
+    def test_combined_mode_splits_plus(self, roles, tmp_path):
+        p = tmp_path / "t.tsv"
+        p.write_text("gene_id\tkegg_ortholog\tpfam\tcazyme\ng1\t\t\tCBM50+GH24(5-150)\n")
+        d = self._decoder(roles)
+        d.load_combined_mode(str(p), dataset_name="v")
+        assert d.data["v"]["cazyme"].tolist() == ["CBM50;GH24"]
+        d.standardize_annotations()
+        d.add_viral_cazy_roles()
+        assert d.annotations["v"]["viral_cazy_role"].tolist() == ["peptidoglycanase_lysis"]
+
+    def test_subfamily_matched_by_prefix(self):
+        import pandas as pd
+        row = pd.Series({"cazyme": "CBM2;GH5", "cazy_subfamilies": "GH5_7",
+                         "cazy_ec": ";", "cazy_tools": "3;3"})
+        hits = list(MetaFuncDecoder._iter_cazy_hits(row))
+        assert [(a, s) for a, s, _, _ in hits] == [("CBM2", []), ("GH5", ["GH5_7"])]
+

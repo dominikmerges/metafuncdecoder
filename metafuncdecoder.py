@@ -64,19 +64,81 @@ def _parse_patterns(raw_list) -> list:
     return result
 
 
-def viral_cazy_role(cazy_families: str, roles: Dict[str, List[str]]) -> str:
-    """First role (in YAML order) matching a family; [] matches unlisted families."""
-    listed = {f for members in roles.values() for f in members}
-    fams = []
-    for token in str(cazy_families or "").split(";"):
-        m = re.match(r"([A-Z]+\d+)(_\d+)?", token.strip())
-        if m:
-            fams.append({m.group(0), m.group(1)})
-    for role, members in roles.items():
-        for f in fams:
-            if (f & set(members)) if members else not (f & listed):
-                return role
-    return ""
+_CAZY_ID_RE = re.compile(r"([A-Z]+)(\d+)(_\w+)?")
+
+
+def parse_cazy_id(token) -> Optional[Tuple[str, str]]:
+    """Split a CAZy ID into (family, subfamily); subfamily is '' when absent.
+
+    'GH5_7(19-390)' -> ('GH5', 'GH5_7');  'GH24' -> ('GH24', '');  '-' -> None
+    """
+    m = _CAZY_ID_RE.match(str(token).strip())
+    if not m:
+        return None
+    family = m.group(1) + m.group(2)
+    return family, (family + m.group(3) if m.group(3) else "")
+
+
+def split_cazy_field(raw) -> List[str]:
+    """Split a cazyme cell on ';' or dbCAN's '+', dropping (start-end) coordinates."""
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return []
+    text = re.sub(r"\(.*?\)", "", str(raw))
+    tokens = (t.strip() for t in re.split(r"[;+]", text))
+    return [t for t in tokens if t and t not in ("-", "nan")]
+
+
+class ViralCazyRoles:
+    """Phage role of a gene from its CAZy families (--viral).
+
+    Each role lists subfamilies (PL1_2), families (GH24) or class prefixes (GH);
+    an empty list is the catch-all. A family takes the role of its most specific
+    entry: subfamily, then family, then class, then catch-all. Across a gene's
+    families, the role listed first in the YAML wins.
+    """
+
+    def __init__(self, roles: Dict[str, List[str]]):
+        self.names = list(roles)
+        self._by_id: Dict[str, int] = {}
+        self._by_class: Dict[str, int] = {}
+        self._catch_all: Optional[int] = None
+        for i, (role, members) in enumerate(roles.items()):
+            if not members:
+                if self._catch_all is None:
+                    self._catch_all = i
+                else:
+                    print(f"  Warning: viral role '{role}' is a second catch-all; ignored")
+                continue
+            for entry in members:
+                entry = str(entry).strip()
+                table = self._by_class if re.fullmatch(r"[A-Z]+", entry) else self._by_id
+                if entry in table and table[entry] != i:
+                    print(
+                        f"  Warning: {entry} is listed under viral roles "
+                        f"'{self.names[table[entry]]}' and '{role}'; using the first"
+                    )
+                table.setdefault(entry, i)
+        self._cache: Dict[tuple, str] = {}
+
+    def _family_role(self, family: str, subfamily: str) -> Optional[int]:
+        for key in (subfamily, family):
+            if key and key in self._by_id:
+                return self._by_id[key]
+        cazy_class = re.match(r"[A-Z]+", family).group(0)
+        return self._by_class.get(cazy_class, self._catch_all)
+
+    def role(self, families: List[Tuple[str, str]]) -> str:
+        """Role for a gene given its (family, subfamily) pairs; '' if none."""
+        key = tuple(families)
+        if key not in self._cache:
+            hits = [self._family_role(f, s) for f, s in families]
+            hits = [i for i in hits if i is not None]
+            self._cache[key] = self.names[min(hits)] if hits else ""
+        return self._cache[key]
+
+    def role_of_field(self, raw) -> str:
+        """Role for a raw cazyme string such as 'CBM50+GH24' or 'PL7_5;GH19'."""
+        return self.role([p for p in map(parse_cazy_id, split_cazy_field(raw)) if p])
 
 
 # ---------------------------------------------------------------------------
@@ -327,10 +389,10 @@ class CAZyMapper(FunctionalMapper):
           1. Explicit family ID list from YAML (families: field) — authoritative.
           2. Text pattern matching against FamInfo activity description — fallback.
         """
-        family_match = re.match(r"([A-Z]+\d+(?:_\w+)?)", str(cazy_annotation))
-        if not family_match:
+        parsed = parse_cazy_id(cazy_annotation)
+        if not parsed:
             return ["other"]
-        family = family_match.group(1)
+        family = parsed[1] or parsed[0]
 
         # Option C: explicit family ID takes priority; bypasses text matching.
         # Returns all subcategories the family is listed under (may be >1 for
@@ -440,6 +502,7 @@ class MetaFuncDecoder:
         self.annotations: Dict[str, pd.DataFrame] = {}
         self.results: Dict[str, Dict] = {}
         self._categories = categories
+        self._min_cazy_tools = 1
 
         # KEGG mapper
         kegg_patterns = {
@@ -783,6 +846,10 @@ class MetaFuncDecoder:
             else:
                 df = df.drop_duplicates(subset=["gene_id"])
 
+        # Same normalisation as --cazy-file: '+' joins domains, drop coordinates.
+        if "cazyme" in df.columns:
+            df["cazyme"] = df["cazyme"].map(lambda x: ";".join(split_cazy_field(x)))
+
         self.data[dataset_name] = df
         print(f"  Ready: {len(df)} genes")
 
@@ -791,6 +858,7 @@ class MetaFuncDecoder:
     def standardize_annotations(self, min_cazy_tools: int = 1) -> None:
         """Generate per-gene annotations for all loaded datasets."""
         print("\nGenerating annotations...")
+        self._min_cazy_tools = min_cazy_tools
         for dataset_name, df in self.data.items():
             print(f"  Processing {dataset_name}...")
             self.annotations[dataset_name] = (
@@ -799,18 +867,86 @@ class MetaFuncDecoder:
             print(f"    {len(self.annotations[dataset_name])} records")
 
     def add_viral_cazy_roles(self) -> None:
-        """Add a viral_cazy_role column to every result table (--viral)."""
-        roles = {}
-        for cfg in self._categories.values():
-            roles.update(cfg.get("viral_cazy_roles") or {})
-        if not roles:
+        """Add a viral_cazy_role column to every result table (--viral).
+
+        The role is per gene: it uses every CAZy family on the gene that passes
+        --cazy-min-tools, including families outside any category, and is
+        repeated on all of the gene's rows.
+        """
+        sources = [
+            (name, cfg["viral_cazy_roles"])
+            for name, cfg in self._categories.items()
+            if cfg.get("viral_cazy_roles")
+        ]
+        if not sources:
             print("Warning: --viral set but no viral_cazy_roles found in category YAMLs")
             return
+        if len(sources) > 1:
+            print(
+                f"Warning: viral_cazy_roles defined in {', '.join(n for n, _ in sources)}; "
+                f"using {sources[0][0]} only"
+            )
+        classifier = ViralCazyRoles(sources[0][1])
+
         for name, df in self.annotations.items():
-            if "cazy_families" in df.columns:
-                df["viral_cazy_role"] = df["cazy_families"].map(
-                    lambda f: viral_cazy_role(f, roles)
-                )
+            raw = self.data.get(name)
+            gene_roles: Dict[str, str] = {}
+            if raw is not None and "cazyme" in raw.columns:
+                for _, row in raw.iterrows():
+                    families = []
+                    for ann, subs, _, _ in self._iter_cazy_hits(
+                        row, self._min_cazy_tools, warn=False
+                    ):
+                        parsed = parse_cazy_id(ann)
+                        if not parsed:
+                            continue
+                        if parsed[1] or not subs:
+                            families.append(parsed)
+                        else:
+                            families.extend((parsed[0], s) for s in subs)
+                    gene_roles[str(row.get("gene_id", ""))] = classifier.role(families)
+            df["viral_cazy_role"] = df["gene_id"].map(gene_roles).fillna("")
+
+    @staticmethod
+    def _iter_cazy_hits(row, min_cazy_tools: int = 1, warn: bool = True):
+        """Yield (family, subfamilies, ec, tools) for each CAZy hit on a gene.
+
+        Hits below --cazy-min-tools are skipped. Subfamilies are matched to their
+        family by prefix (GH5 -> GH5_7), since cazy_subfamilies only lists
+        families that have one.
+        """
+        cazyme = row.get("cazyme", "")
+        if not (pd.notna(cazyme) and cazyme):
+            return
+        cazy_ec_list = str(row.get("cazy_ec", "") or "").split(";")
+        cazy_tools_list = str(row.get("cazy_tools", "") or "").split(";")
+        cazy_sub_list = [
+            s.strip() for s in str(row.get("cazy_subfamilies", "") or "").split(";")
+        ]
+        for i, ann in enumerate(str(cazyme).split(";")):
+            ann = ann.strip()
+            if not ann:
+                continue
+            ec = cazy_ec_list[i].strip() if i < len(cazy_ec_list) else ""
+            tools = cazy_tools_list[i].strip() if i < len(cazy_tools_list) else ""
+            # Apply --cazy-min-tools filter: skip families below the threshold.
+            # Uses int(float(x)) so both "3" and "3.0" (common in pandas/R
+            # exports) are handled correctly. Genuinely non-numeric values
+            # (empty string, "-", "NA") are passed through with a warning
+            # rather than silently dropped — missing count ≠ failed threshold.
+            if min_cazy_tools > 1 and tools:
+                try:
+                    if int(float(tools)) < min_cazy_tools:
+                        continue
+                except ValueError:
+                    if warn:
+                        print(
+                            f"  Warning: non-numeric cazy_tools value '{tools}' "
+                            f"for family '{ann}' — cannot apply --cazy-min-tools "
+                            f"filter; hit passed through."
+                        )
+            subs = [s for s in cazy_sub_list if s.startswith(ann + "_")]
+            yield ann, subs, ec, tools
 
     def _generate_annotations(
         self, df: pd.DataFrame, min_cazy_tools: int = 1
@@ -836,53 +972,28 @@ class MetaFuncDecoder:
                 "ko_definition": [],
             })
 
-            cazyme = row.get("cazyme", "")
-            if pd.notna(cazyme) and cazyme:
-                cazy_ec_list = str(row.get("cazy_ec", "") or "").split(";")
-                cazy_tools_list = str(row.get("cazy_tools", "") or "").split(";")
-                cazy_sub_list = str(row.get("cazy_subfamilies", "") or "").split(";")
-                for i, ann in enumerate(str(cazyme).split(";")):
-                    ann = ann.strip()
-                    if not ann:
-                        continue
-                    ec = cazy_ec_list[i].strip() if i < len(cazy_ec_list) else ""
-                    tools = cazy_tools_list[i].strip() if i < len(cazy_tools_list) else ""
-                    subfamily = cazy_sub_list[i].strip() if i < len(cazy_sub_list) else ""
-                    # Apply --cazy-min-tools filter: skip families below the threshold.
-                    # Uses int(float(x)) so both "3" and "3.0" (common in pandas/R
-                    # exports) are handled correctly. Genuinely non-numeric values
-                    # (empty string, "-", "NA") are passed through with a warning
-                    # rather than silently dropped — missing count ≠ failed threshold.
-                    if min_cazy_tools > 1 and tools:
-                        try:
-                            if int(float(tools)) < min_cazy_tools:
-                                continue
-                        except ValueError:
-                            print(
-                                f"  Warning: non-numeric cazy_tools value '{tools}' "
-                                f"for family '{ann}' — cannot apply --cazy-min-tools "
-                                f"filter; hit passed through."
-                            )
-                    # Use subfamily for lookup when available — more specific than family.
-                    # Fall back to family ID if no subfamily was assigned by dbCAN_sub.
-                    lookup_id = subfamily if subfamily else ann
-                    subcats = self.cazy_mapper.get_family_categories(lookup_id)
-                    family_info = self.cazy_mapper.get_detailed_family_info(ann)
-                    activities = family_info.get("activities", "") if family_info else ""
-                    for subcat in subcats:
-                        broad = self.cazy_mapper.get_broad_category(subcat)
-                        if broad != "other":
-                            evidence[broad]["cazy_families"].append(ann)
-                            if subfamily:
-                                evidence[broad]["cazy_subfamilies"].append(subfamily)
-                            evidence[broad]["subcategories"].add(subcat)
-                            evidence[broad]["cazy_subcategories"].add(subcat)
-                            if activities:
-                                evidence[broad]["cazy_description"].append(activities)
-                            if ec:
-                                evidence[broad]["cazy_ec"].append(ec)
-                            if tools:
-                                evidence[broad]["cazy_tool_count"].append(tools)
+            for ann, subs, ec, tools in self._iter_cazy_hits(row, min_cazy_tools):
+                subfamily = subs[0] if subs else ""
+                # Use subfamily for lookup when available — more specific than family.
+                # Fall back to family ID if no subfamily was assigned by dbCAN_sub.
+                lookup_id = subfamily if subfamily else ann
+                subcats = self.cazy_mapper.get_family_categories(lookup_id)
+                family_info = self.cazy_mapper.get_detailed_family_info(ann)
+                activities = family_info.get("activities", "") if family_info else ""
+                for subcat in subcats:
+                    broad = self.cazy_mapper.get_broad_category(subcat)
+                    if broad != "other":
+                        evidence[broad]["cazy_families"].append(ann)
+                        if subfamily:
+                            evidence[broad]["cazy_subfamilies"].append(subfamily)
+                        evidence[broad]["subcategories"].add(subcat)
+                        evidence[broad]["cazy_subcategories"].add(subcat)
+                        if activities:
+                            evidence[broad]["cazy_description"].append(activities)
+                        if ec:
+                            evidence[broad]["cazy_ec"].append(ec)
+                        if tools:
+                            evidence[broad]["cazy_tool_count"].append(tools)
 
             pfam = row.get("pfam", "")
             if pd.notna(pfam) and pfam:

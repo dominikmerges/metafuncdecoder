@@ -656,10 +656,14 @@ cazy_subcategories:
 
 
 # --- Viral CAZy roles (--viral) ---
-# Merges et al. (2026) AEM, Table S15. Order = priority; empty list = any other family.
+# Merges et al. (2026) AEM, Table S15. Entries are subfamilies (PL1_2), families
+# (GH24) or class prefixes (GH). Each family takes its most specific entry:
+# subfamily > family > class > empty list (catch-all). For a gene with several
+# families, the role listed first here wins. Only one YAML may define this block.
 
 viral_cazy_roles:
   peptidoglycanase_lysis: [GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9]
   virion_structural_or_lysis: [GH19, PL1, PL1_2, PL6, PL7, PL9, PL14, GH28]
-  polysaccharide_degrading: []
+  polysaccharide_degrading: [GH, PL, CE]
   non_catalytic_cbm: [CBM9, CBM12, CBM13, CBM32, CBM35, CBM50, CBM61, CBM67]
+  other_cazy: []   # GT, AA, unlisted CBMs

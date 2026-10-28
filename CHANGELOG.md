@@ -6,7 +6,7 @@ All notable changes to MetaFuncDecoder are documented here.
 
 ### Added
 
-- **`--viral`**: adds a `viral_cazy_role` column labelling each CAZy family by its known phage role (`peptidoglycanase_lysis`, `virion_structural_or_lysis`, `polysaccharide_degrading`, `non_catalytic_cbm`). Family sets fixed to Merges et al. 2026 AEM, Table S15. Off by default; output is unchanged without the flag.
+- **`--viral`**: adds a `viral_cazy_role` column labelling each CAZy family by its known phage role (`peptidoglycanase_lysis`, `virion_structural_or_lysis`, `polysaccharide_degrading`, `non_catalytic_cbm`, `other_cazy`). Family sets fixed to Merges et al. 2026 AEM, Table S15. The role is per gene and uses all of the gene's CAZy hits. Off by default; output is unchanged without the flag.
 
 ### Removed
 
@@ -19,6 +19,8 @@ All notable changes to MetaFuncDecoder are documented here.
 ### Fixed
 
 - `carbon_cycling.yaml`: CE9 was inside the GH153 comment and so missing from the `peptidoglycanase` subcategory; it is now listed, matching Merges et al. 2026 AEM, Table S15.
+- Combined-table mode now splits `+`-joined CAZy domains (e.g. `CBM50+GH24`) and strips coordinates, as `--cazy-file` already did.
+- dbCAN subfamilies are matched to their family by prefix. Before, they were matched by position, so a gene like `CBM2;GH5` with subfamily `GH5_7` could attach `GH5_7` to `CBM2`.
 
 ## [1.0.0] — 2026-03-13
 

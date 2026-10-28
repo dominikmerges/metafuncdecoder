@@ -196,7 +196,7 @@ functional category matched; genes with no match are omitted by default (use
 | `ko_definition` | KO definition string from the KEGG `ko_list` |
 | `supporting_databases` | Which databases provided evidence, semicolon-separated (`CAZy`, `Pfam`, `KEGG`) |
 | `n_databases` | Number of databases that independently support the annotation (1–3) |
-| `viral_cazy_role` | Only with `--viral`. Known role of the row's CAZy family in phages; see [Viral contigs](#viral-contigs---viral). Empty when the row has no CAZy family. |
+| `viral_cazy_role` | Only with `--viral`. Known phage role of the gene's CAZy families, the same on every row of the gene; see [Viral contigs](#viral-contigs---viral). Empty when the gene has no CAZy hit. |
 
 ### Database support
 
@@ -223,21 +223,34 @@ auxiliary metabolic genes (AMGs). `--viral` adds a `viral_cazy_role` column that
 labels each CAZy family using the curated sets in Merges et al. 2026, *AEM*,
 Supplementary Table S15:
 
-| `viral_cazy_role` | Families | Table S6/S7 class |
+| `viral_cazy_role` | Families | Table S15 class |
 |---|---|---|
 | `peptidoglycanase_lysis` | GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9 | Peptidoglycanase (lysis), excluded from the AMG set |
 | `virion_structural_or_lysis` | GH19, PL1, PL1_2, PL6, PL7, PL9, PL14, GH28 | Documented virion-structural or lysis role |
+| `polysaccharide_degrading` | any other GH, PL or CE family | Polysaccharide-degrading, no viral structural role reported |
 | `non_catalytic_cbm` | CBM9, CBM12, CBM13, CBM32, CBM35, CBM50, CBM61, CBM67 | Non-catalytic binding module |
-| `polysaccharide_degrading` | any other CAZy family | Polysaccharide-degrading, no viral structural role reported |
-| *(empty)* | no CAZy family | No CAZy family (KEGG/Pfam only) |
+| `other_cazy` | any other family (GT, AA, unlisted CBMs) | Not classified |
+| *(empty)* | none | Gene has no CAZy hit (after `--cazy-min-tools`) |
+
+The role is assigned per gene from all of its CAZy hits, including families
+that map to no category, and is repeated on every row of that gene. A gene
+with several families takes the role listed highest in the table, so any
+lysis-associated family flags the gene. Genes whose only CAZy hits map to
+no category (e.g. CBM50 alone) are labelled but sit on `unannotated` rows,
+which are written only with `--include-unannotated`.
 
 The sets live under `viral_cazy_roles` at the end of
-`categories/carbon_cycling.yaml` and can be edited there. Roles are checked in
-file order, so any lysis-associated family flags the gene; an empty list stands
-for every family not listed elsewhere. Subfamilies fall back to their family
-(e.g. `PL7_5` → `PL7`).
+`categories/carbon_cycling.yaml` and can be edited there. Entries can be
+subfamilies (`PL1_2`), families (`GH24`) or class prefixes (`GH`), and an empty
+list catches everything else. Each family uses its most specific entry, so a
+subfamily can be given a different role from its parent; subfamilies without
+their own entry fall back to the family (e.g. `PL7_5` → `PL7`). Subfamilies
+come from the dbCAN `dbCAN_sub` column or from IDs such as `GH5_7` in a
+combined table. Only one YAML file may define `viral_cazy_roles`; if several
+do, the first in load order is used and a warning is printed.
 
-The label describes the family, not the gene. GH19 in particular remains
+The label reflects what is known about the family, not this particular
+gene. GH19 in particular remains
 ambiguous between chitinase and endolysin; in the paper, most cassette-eligible
 GH19 genes sat next to a holin/spanin (Tables S8–S9), which favours a lysis role
 but needs gene order to test. MetaFuncDecoder does not use gene order.
