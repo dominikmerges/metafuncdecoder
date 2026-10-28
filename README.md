@@ -227,7 +227,7 @@ Supplementary Table S15, and the family classes of Tables S6/S7:
 |---|---|---|
 | `peptidoglycanase_lysis` | GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9 | Peptidoglycanase (lysis), excluded from the AMG set |
 | `virion_structural_or_lysis` | GH19, PL1, PL1_2, PL6, PL7, PL9, PL14, GH28 | Documented virion-structural or lysis role |
-| `polysaccharide_degrading` | any other GH, PL, CE or AA family | Polysaccharide-degrading, no viral structural role reported |
+| `polysaccharide_degrading` | any other GH, PL or CE family, plus AA3, AA5 and AA7 (other AA families are `other_cazy`) | Polysaccharide-degrading, no viral structural role reported |
 | `non_catalytic_cbm` | CBM9, CBM12, CBM13, CBM32, CBM35, CBM50, CBM61, CBM67 | Non-catalytic binding module |
 | `other_cazy` | any other family (e.g. GT, unlisted CBMs) | Not in the paper's AMG set; not classified |
 | *(empty)* | none | Gene has no CAZy hit (after `--cazy-min-tools`) |

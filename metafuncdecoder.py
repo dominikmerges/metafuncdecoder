@@ -88,6 +88,29 @@ def split_cazy_field(raw) -> List[str]:
     return [t for t in tokens if t and t not in ("-", "nan")]
 
 
+def expand_cazy_cell(cazyme, aligned=()) -> Tuple[List[str], List[List[str]]]:
+    """Split a cazyme cell like split_cazy_field, keeping aligned columns in step.
+
+    `aligned` holds cells such as cazy_ec and cazy_tools, with one value per
+    ';' entry of cazyme. When an entry splits into several families
+    ('GH24+CBM50'), its value is repeated for each; dropped entries ('-')
+    drop their value too.
+    """
+    def _text(v):
+        return "" if v is None or (isinstance(v, float) and pd.isna(v)) else str(v)
+
+    split_aligned = [_text(v).split(";") for v in aligned]
+    families: List[str] = []
+    out: List[List[str]] = [[] for _ in aligned]
+    for i, entry in enumerate(_text(cazyme).split(";")):
+        fams = split_cazy_field(entry)
+        families.extend(fams)
+        for vals, col in zip(split_aligned, out):
+            value = vals[i].strip() if i < len(vals) else ""
+            col.extend([value] * len(fams))
+    return families, out
+
+
 class ViralCazyRoles:
     """Phage role of a gene from its CAZy families (--viral).
 
@@ -385,26 +408,30 @@ class CAZyMapper(FunctionalMapper):
     def get_family_categories(self, cazy_annotation: str) -> List[str]:
         """Return subcategory names (e.g. 'cellulase'), not broad categories.
 
-        Lookup order:
+        Lookup order (a subfamily such as GH5_7 is tried before its family GH5):
           1. Explicit family ID list from YAML (families: field) — authoritative.
           2. Text pattern matching against FamInfo activity description — fallback.
         """
         parsed = parse_cazy_id(cazy_annotation)
         if not parsed:
             return ["other"]
-        family = parsed[1] or parsed[0]
+        family, subfamily = parsed
+        keys = [k for k in (subfamily, family) if k]
 
         # Option C: explicit family ID takes priority; bypasses text matching.
         # Returns all subcategories the family is listed under (may be >1 for
         # heterogeneous families like GH16).
-        if family in self.family_to_subcategory:
-            return self.family_to_subcategory[family]
+        for key in keys:
+            if key in self.family_to_subcategory:
+                return self.family_to_subcategory[key]
 
-        if family not in self.family_info:
-            return ["other"]
-        hits = self._search_patterns_in_text(self.family_info[family]["activities"])
-        cats = [cat for cat, _ in hits]
-        return cats if cats else ["other"]
+        for key in keys:
+            if key in self.family_info:
+                hits = self._search_patterns_in_text(self.family_info[key]["activities"])
+                cats = [cat for cat, _ in hits]
+                if cats:
+                    return cats
+        return ["other"]
 
     def get_broad_category(self, subcategory: str) -> str:
         """Map subcategory name to broad category using YAML-defined hierarchy."""
@@ -847,8 +874,16 @@ class MetaFuncDecoder:
                 df = df.drop_duplicates(subset=["gene_id"])
 
         # Same normalisation as --cazy-file: '+' joins domains, drop coordinates.
+        # cazy_ec / cazy_tools are positional, so expand them with the families.
         if "cazyme" in df.columns:
-            df["cazyme"] = df["cazyme"].map(lambda x: ";".join(split_cazy_field(x)))
+            aligned = [c for c in ("cazy_ec", "cazy_tools") if c in df.columns]
+            expanded = [
+                expand_cazy_cell(cells[0], cells[1:])
+                for cells in zip(df["cazyme"], *(df[c] for c in aligned))
+            ]
+            df["cazyme"] = [";".join(fams) for fams, _ in expanded]
+            for j, col in enumerate(aligned):
+                df[col] = [";".join(vals[j]) for _, vals in expanded]
 
         self.data[dataset_name] = df
         print(f"  Ready: {len(df)} genes")
@@ -973,27 +1008,36 @@ class MetaFuncDecoder:
             })
 
             for ann, subs, ec, tools in self._iter_cazy_hits(row, min_cazy_tools):
-                subfamily = subs[0] if subs else ""
-                # Use subfamily for lookup when available — more specific than family.
-                # Fall back to family ID if no subfamily was assigned by dbCAN_sub.
-                lookup_id = subfamily if subfamily else ann
-                subcats = self.cazy_mapper.get_family_categories(lookup_id)
+                # Look up every subfamily dbCAN_sub assigned (each falls back to
+                # the family if unlisted); with none, look up the family itself.
+                per_broad: Dict[str, Dict] = defaultdict(
+                    lambda: {"subcats": set(), "subs": []}
+                )
+                for lookup_id in subs or [ann]:
+                    for subcat in self.cazy_mapper.get_family_categories(lookup_id):
+                        broad = self.cazy_mapper.get_broad_category(subcat)
+                        if broad == "other":
+                            continue
+                        per_broad[broad]["subcats"].add(subcat)
+                        if subs and lookup_id not in per_broad[broad]["subs"]:
+                            per_broad[broad]["subs"].append(lookup_id)
+                if not per_broad:
+                    continue
                 family_info = self.cazy_mapper.get_detailed_family_info(ann)
                 activities = family_info.get("activities", "") if family_info else ""
-                for subcat in subcats:
-                    broad = self.cazy_mapper.get_broad_category(subcat)
-                    if broad != "other":
-                        evidence[broad]["cazy_families"].append(ann)
-                        if subfamily:
-                            evidence[broad]["cazy_subfamilies"].append(subfamily)
-                        evidence[broad]["subcategories"].add(subcat)
-                        evidence[broad]["cazy_subcategories"].add(subcat)
-                        if activities:
-                            evidence[broad]["cazy_description"].append(activities)
-                        if ec:
-                            evidence[broad]["cazy_ec"].append(ec)
-                        if tools:
-                            evidence[broad]["cazy_tool_count"].append(tools)
+                # One entry per hit and broad category, however many subfamilies matched.
+                for broad, found in per_broad.items():
+                    ev = evidence[broad]
+                    ev["cazy_families"].append(ann)
+                    ev["cazy_subfamilies"].extend(found["subs"])
+                    ev["subcategories"].update(found["subcats"])
+                    ev["cazy_subcategories"].update(found["subcats"])
+                    if activities:
+                        ev["cazy_description"].append(activities)
+                    if ec:
+                        ev["cazy_ec"].append(ec)
+                    if tools:
+                        ev["cazy_tool_count"].append(tools)
 
             pfam = row.get("pfam", "")
             if pd.notna(pfam) and pfam:

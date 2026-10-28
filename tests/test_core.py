@@ -1111,6 +1111,10 @@ class TestViralCazyRole:
         # catch-all no longer swallows non-degrading classes
         ("AA7", "polysaccharide_degrading"),  # Table S6
         ("AA3", "polysaccharide_degrading"),
+        ("AA5_2", "polysaccharide_degrading"),
+        # only AA3/5/7 count as degrading; other AA families are not in the AMG set
+        ("AA10", "other_cazy"),
+        ("AA1", "other_cazy"),
         ("GT2", "other_cazy"),
         ("CBM5", "other_cazy"),
         # '+'-joined domains, either order
@@ -1228,3 +1232,55 @@ class TestViralCazyRole:
         hits = list(MetaFuncDecoder._iter_cazy_hits(row))
         assert [(a, s) for a, s, _, _ in hits] == [("CBM2", []), ("GH5", ["GH5_7"])]
 
+    def test_combined_mode_keeps_tools_and_ec_aligned(self, tmp_path):
+        p = tmp_path / "t.tsv"
+        p.write_text(
+            "gene_id\tkegg_ortholog\tpfam\tcazyme\tcazy_tools\tcazy_ec\n"
+            "g1\t\t\tGH24+CBM50;-;GH19\t1;2;3\tE1;E2;E3\n"
+        )
+        d = MetaFuncDecoder(_minimal_categories())
+        d.load_combined_mode(str(p), dataset_name="v")
+        row = d.data["v"].iloc[0]
+        assert row["cazyme"] == "GH24;CBM50;GH19"
+        assert row["cazy_tools"] == "1;1;3"
+        assert row["cazy_ec"] == "E1;E1;E3"
+        hits = list(MetaFuncDecoder._iter_cazy_hits(row, min_cazy_tools=2))
+        assert [(a, ec, t) for a, _, ec, t in hits] == [("GH19", "E3", "3")]
+
+
+class TestCazySubfamilyLookup:
+    """Subfamilies fall back to their family, and every subfamily is used."""
+
+    @staticmethod
+    def _mapper():
+        mapper = CAZyMapper(
+            {"cellulase": [("cellulase", "")]},
+            {"cellulase": "carbon_cycling", "mannanase": "carbon_cycling",
+             "xylanase": "carbon_cycling"},
+        )
+        mapper.family_info = {"GH5": {"activities": "Cellulase (EC 3.2.1.4)",
+                                      "class": "GH", "note": ""}}
+        mapper.family_to_subcategory = {"GH5_2": ["xylanase"], "GH5_7": ["mannanase"]}
+        return mapper
+
+    def test_unlisted_subfamily_falls_back_to_family(self):
+        mapper = self._mapper()
+        assert mapper.get_family_categories("GH5_40") == ["cellulase"]
+        assert mapper.get_family_categories("GH5_7") == ["mannanase"]
+        assert mapper.get_family_categories("GH99_1") == ["other"]
+
+    def test_all_subfamilies_used(self):
+        import pandas as pd
+        d = MetaFuncDecoder(_minimal_categories())
+        d.cazy_mapper = self._mapper()
+        df = pd.DataFrame([{
+            "gene_id": "g1", "kegg_ortholog": None, "pfam": None, "cazyme": "GH5",
+            "cazy_subfamilies": "GH5_2;GH5_7", "cazy_ec": "3.2.1.8", "cazy_tools": "3",
+        }])
+        rec = d._generate_annotations(df).iloc[0]
+        assert rec["functional_category"] == "carbon_cycling"
+        assert rec["subcategories"] == "mannanase;xylanase"
+        assert rec["cazy_subfamilies"] == "GH5_2;GH5_7"
+        assert rec["cazy_families"] == "GH5"
+        assert rec["cazy_ec"] == "3.2.1.8"
+        assert rec["cazy_tool_count"] == "3"
