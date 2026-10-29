@@ -1,5 +1,7 @@
 # MetaFuncDecoder
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19009291.svg)](https://doi.org/10.5281/zenodo.19009291)
+
 MetaFuncDecoder converts raw functional annotations (KO terms, Pfam IDs, CAZy families)
 from JGI KOfamScan, HMMER Pfam, and dbCAN files into ecologically interpretable
 functional profiles, recording which databases support each call.
@@ -361,7 +363,10 @@ All 98 tests run in-memory and do not require the reference databases to be down
 
 If you use MetaFuncDecoder, please cite the software release:
 
-> Merges D (2026). MetaFuncDecoder v1.0.0. Zenodo. https://doi.org/10.5281/zenodo.19009291
+> Merges D (2026). MetaFuncDecoder (v2.0.0). Zenodo. https://doi.org/10.5281/zenodo.19009291
+
+This DOI always points to the latest release. Each version also has its own DOI,
+listed on the [Zenodo record](https://doi.org/10.5281/zenodo.19009291).
 
 And the relevant category definition sources:
 - López-Mondéjar et al. (2022) mSystems 7:e00829-22

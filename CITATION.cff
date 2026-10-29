@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use MetaFuncDecoder, please cite the following."
+message: "If you use MetaFuncDecoder, please cite it as below."
 type: software
 title: MetaFuncDecoder
 abstract: >
@@ -9,12 +9,12 @@ abstract: >
 authors:
   - family-names: Merges
     given-names: Dominik
-    orcid: ""
+    orcid: "https://orcid.org/0000-0002-5411-7795"
 repository-code: "https://github.com/dominikmerges/metafuncdecoder"
 doi: "10.5281/zenodo.19009291"
 license: MIT
-version: "1.0.0"
-date-released: "2026-03-13"
+version: "2.0.0"
+date-released: "2026-10-29"
 keywords:
   - metagenomics
   - functional annotation
@@ -23,13 +23,4 @@ keywords:
   - Pfam
   - carbon cycling
   - nitrogen cycling
-
-preferred-citation:
-  type: software
-  title: "MetaFuncDecoder v1.0.0"
-  authors:
-    - family-names: Merges
-      given-names: Dominik
-  year: 2026
-  doi: "10.5281/zenodo.19009291"
-  url: "https://doi.org/10.5281/zenodo.19009291"
+  - viruses
