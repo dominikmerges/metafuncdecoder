@@ -566,7 +566,8 @@ cazy_subcategories:
       - GH119  # α-amylase (EC 3.2.1.1); distantly related to GH57
       - GH122  # α-glucosidase (EC 3.2.1.20)
       - GH126  # α-amylase (EC 3.2.1.-)
-      - GH133  # amylo-α-1,6-glucosidase (EC 3.2.1.33)    patterns:
+      - GH133  # amylo-α-1,6-glucosidase (EC 3.2.1.33)
+    patterns:
       - "amylase"
       - "α-amylase"
       - "alpha-amylase"
