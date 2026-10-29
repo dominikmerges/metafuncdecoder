@@ -104,7 +104,7 @@ kegg_patterns:
 # Matched against GO term name strings from the Pfam2GO mapping.
 # Patterns without a subcategory: field (antibiotic, antimicrobial, resistance.*protein)
 # match the broad antibiotics category but produce no subcategory label in the output.
-# These are Pfam-only, low-confidence hits. Filter confidence_level = medium or higher
+# These are Pfam-only broad hits. Use --exclude-broad (or evidence_specificity != broad)
 # to exclude them from results requiring a subcategory assignment.
 
 pfam_patterns:

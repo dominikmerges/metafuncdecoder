@@ -2,7 +2,7 @@
 
 MetaFuncDecoder converts raw functional annotations (KO terms, Pfam IDs, CAZy families)
 from JGI KOfamScan, HMMER Pfam, and dbCAN files into ecologically interpretable
-functional profiles with cross-database confidence scoring.
+functional profiles, recording which databases support each call.
 
 ## What it does
 
@@ -11,7 +11,7 @@ Many (meta)genome annotation pipelines produce files full of identifiers
 
 1. Loads annotation files from JGI, HMMER, dbCAN, or a pre-merged table
 2. Maps identifiers to functional categories defined in user-editable YAML files
-3. Scores confidence based on how many databases agree on the same category
+3. Counts how many databases (KEGG, Pfam, CAZy) support each category and subcategory
 4. Outputs a single CSV with one row per gene per matched category, including subcategory labels and evidence from each database
 
 Functional categories are defined in plain YAML files that can be copied and
@@ -118,7 +118,7 @@ filter. Whether hits are pre-filtered depends on how HMMER was run upstream:
   all hits in the output file can be treated as reliable.
 - **Without `--cut_ga`:** the file may contain low-scoring hits. Pre-filter the blout
   or domtblout file before passing it to MetaFuncDecoder, or treat Pfam-only
-  (`confidence_level = low`) calls with additional caution.
+  calls (`supporting_databases = Pfam`) with additional caution.
 
 JGI annotation pipelines typically apply gathering cutoffs, so JGI blout files are
 generally pre-filtered. If you are unsure, check the HMMER command used to generate
@@ -171,7 +171,7 @@ Total annotations: 5683
 ### CSV output
 
 All CSV outputs go to `--output` (default: `results/`).
-The output file is named `<dataset>_confidence_annotations.csv`, where `<dataset>` is
+The output file is named `<dataset>_annotations.csv`, where `<dataset>` is
 `metagenome` by default and can be set with `--dataset-name`. One row is written per gene per
 functional category matched; genes with no match are omitted by default (use
 `--include-unannotated` to retain them).
@@ -196,17 +196,13 @@ functional category matched; genes with no match are omitted by default (use
 | `ko_definition` | KO definition string from the KEGG `ko_list` |
 | `supporting_databases` | Which databases provided evidence, semicolon-separated (`CAZy`, `Pfam`, `KEGG`) |
 | `n_databases` | Number of databases that independently support the annotation (1–3) |
-| `confidence_level` | `high` / `medium` / `low` / `none` (see table below) |
-| `confidence_score` | Numeric confidence: 1.0 / 0.67 / 0.33 / 0.0 |
+| `viral_cazy_role` | Only with `--viral`. Known phage role of the gene's CAZy families, the same on every row of the gene; see [Viral contigs](#viral-contigs---viral). Empty when the gene has no CAZy hit. |
 
-### Confidence scoring
+### Database support
 
-| Level | Meaning | Score |
-|-------|---------|-------|
-| high | All 3 databases agree | 1.0 |
-| medium | 2 databases agree | 0.67 |
-| low | 1 database | 0.33 |
-| none | No functional annotation | 0.0 |
+Evidence is reported as counts: `n_databases` for the broad category and
+`subcategory_n_databases` for the subcategory. Categories without a CAZy
+component (nitrogen cycling, antibiotics) can reach at most 2.
 
 ### Reproducibility and provenance
 
@@ -220,9 +216,52 @@ Keep `run_manifest.json` alongside the result CSV when archiving data for public
 It allows any run to be exactly reproduced or audited without relying on memory of
 which database version was used.
 
-### Interpreting low-confidence hits
+### Viral contigs (`--viral`)
 
-`low` confidence (single-database) hits include two distinct types of evidence,
+On viral contigs, many CAZy hits are lysis or virion-structural proteins, not
+auxiliary metabolic genes (AMGs). `--viral` adds a `viral_cazy_role` column that
+labels each CAZy family using the curated sets in Merges et al. 2026, *AEM*,
+Supplementary Table S15, and the family classes of Tables S6/S7:
+
+| `viral_cazy_role` | Families | Class in Tables S6/S7 |
+|---|---|---|
+| `peptidoglycanase_lysis` | GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9 | Peptidoglycanase (lysis), excluded from the AMG set |
+| `virion_structural_or_lysis` | GH19, PL1, PL1_2, PL6, PL7, PL9, PL14, GH28 | Documented virion-structural or lysis role |
+| `polysaccharide_degrading` | any other GH, PL or CE family, plus AA3, AA5 and AA7 (other AA families are `other_cazy`) | Polysaccharide-degrading, no viral structural role reported |
+| `non_catalytic_cbm` | CBM9, CBM12, CBM13, CBM32, CBM35, CBM50, CBM61, CBM67 | Non-catalytic binding module |
+| `other_cazy` | any other family (e.g. GT, unlisted CBMs) | Not in the paper's AMG set; not classified |
+| *(empty)* | none | Gene has no CAZy hit (after `--cazy-min-tools`) |
+
+The role is assigned per gene from all of its CAZy hits, including families
+that map to no category, and is repeated on every row of that gene. A row can
+therefore carry a role while its `cazy_families` cell is empty: for example, a
+gene kept for its Pfam hit whose only CAZy hit is GT11 shows `other_cazy`. A gene
+with several families takes the role listed highest in the table, so any
+lysis-associated family flags the gene. Genes whose only CAZy hits map to
+no category (e.g. CBM50 alone) are labelled but sit on `unannotated` rows,
+which are written only with `--include-unannotated`.
+
+The sets live under `viral_cazy_roles` at the end of
+`categories/carbon_cycling.yaml` and can be edited there. Entries can be
+subfamilies (`PL1_2`), families (`GH24`) or class prefixes (`GH`), and an empty
+list catches everything else. Each family uses its most specific entry, so a
+subfamily can be given a different role from its parent; subfamilies without
+their own entry fall back to the family (e.g. `PL7_5` → `PL7`). Subfamilies
+come from the dbCAN `dbCAN_sub` column or from IDs such as `GH5_7` in a
+combined table. Only one YAML file may define `viral_cazy_roles`; if several
+do, the first in load order is used and a warning is printed.
+
+The label reflects what is known about the family, not this particular
+gene. GH19 in particular remains
+ambiguous between chitinase and endolysin; in the paper, most cassette-eligible
+GH19 genes sat next to a holin/spanin (Tables S8–S9), which favours a lysis role
+but needs gene order to test. MetaFuncDecoder does not use gene order.
+Typical use: keep `polysaccharide_degrading` as candidate AMGs and report
+`virion_structural_or_lysis` separately.
+
+### Interpreting single-database hits
+
+Single-database hits (`n_databases = 1`) include two distinct types of evidence,
 distinguished by the `evidence_specificity` column:
 
 - **`specific`**: the gene matched a substrate-specific pattern — a named enzyme KO
@@ -243,9 +282,9 @@ python metafuncdecoder.py --ko-file my.ko --function all --exclude-broad
 # Post-hoc in Python
 df = df[df["evidence_specificity"] != "broad"]
 
-# Or keep only medium/high confidence (which also excludes all broad hits,
-# since broad hits are always single-database and therefore always low confidence)
-df = df[df["confidence_level"].isin(["medium", "high"])]
+# Or keep only multi-database calls (which also excludes all broad hits,
+# since broad hits are always single-database)
+df = df[df["n_databases"] >= 2]
 ```
 
 ## Functional categories
@@ -316,7 +355,7 @@ To run the test suite:
 pytest -q
 ```
 
-All 66 tests run in-memory and do not require the reference databases to be downloaded.
+All 98 tests run in-memory and do not require the reference databases to be downloaded.
 
 ## Citation
 
