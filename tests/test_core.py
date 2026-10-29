@@ -375,6 +375,22 @@ class TestDatabaseCounts:
         assert result.iloc[0]["n_databases"] == 0
         assert result.iloc[0]["functional_category"] == "unannotated"
 
+    def test_unannotated_first_keeps_subcategory_n_databases_integer(self, decoder):
+        """An unannotated first gene must not turn subcategory_n_databases into
+        a float column with blanks, or move it to the end of the table."""
+        import pandas as pd
+        result = self._run(decoder, [
+            {"gene_id": "g_empty", "kegg_ortholog": None, "pfam": None, "cazyme": None},
+            {"gene_id": "g1", "kegg_ortholog": "KO:K01234", "pfam": None, "cazyme": "GH18",
+             "cazy_ec": "3.2.1.14", "cazy_tools": "3"},
+        ])
+        col = result["subcategory_n_databases"]
+        assert col.notna().all()
+        assert pd.api.types.is_integer_dtype(col)
+        assert result.iloc[0]["subcategory_n_databases"] == 0
+        cols = list(result.columns)
+        assert cols.index("subcategory_n_databases") == cols.index("evidence_specificity") + 1
+
     def test_supporting_databases_field(self, decoder):
         result = self._run(decoder, [
             {"gene_id": "g1", "kegg_ortholog": "KO:K01234", "pfam": None, "cazyme": "GH18",

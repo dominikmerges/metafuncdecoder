@@ -21,6 +21,7 @@ All notable changes to MetaFuncDecoder are documented here.
 - `carbon_cycling.yaml`: CE9 was inside the GH153 comment and so missing from the `peptidoglycanase` subcategory; it is now listed, matching Merges et al. 2026 AEM, Table S15.
 - Combined-table mode now splits `+`-joined CAZy domains (e.g. `CBM50+GH24`) and strips coordinates, as `--cazy-file` already did.
 - dbCAN subfamilies are matched to their family by prefix. Before, they were matched by position, so a gene like `CBM2;GH5` with subfamily `GH5_7` could attach `GH5_7` to `CBM2`.
+- With `--include-unannotated`, unannotated rows now get `subcategory_n_databases = 0`. Before, the column became decimals with blanks (e.g. `1.0`) and moved to the end of the table when the first gene was unannotated.
 
 ## [1.0.0] — 2026-03-13
 

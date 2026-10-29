@@ -1080,6 +1080,7 @@ class MetaFuncDecoder:
                     "functional_category": "unannotated",
                     "subcategories": "",
                     "evidence_specificity": "",
+                    "subcategory_n_databases": 0,
                     "cazy_families": "",
                     "cazy_subfamilies": "",
                     "cazy_ec": "",

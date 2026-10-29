@@ -355,7 +355,7 @@ To run the test suite:
 pytest -q
 ```
 
-All 77 tests run in-memory and do not require the reference databases to be downloaded.
+All 98 tests run in-memory and do not require the reference databases to be downloaded.
 
 ## Citation
 
