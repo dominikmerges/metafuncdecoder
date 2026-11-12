@@ -15,12 +15,18 @@
 # because FamInfo does not resolve these subfunctions at the family level. Use dbCAN_sub
 # subfamily entries (GH16_11–GH16_17 etc.) for substrate-specific assignments.
 #
+# Note on GH19: CAZy splits GH19 into GH19_1 (lysozyme, EC 3.2.1.17; phage endolysins)
+# and GH19_2 (chitinase, EC 3.2.1.14) after Hornung & Terrapon (2023). GH19_1 is listed
+# under peptidoglycanase, GH19_2 under chitinase. GH19 without a dbCAN_sub call stays
+# under chitinase.
+#
 # To create a custom category, copy this file, rename it, and adjust the
 # patterns. All regex patterns are case-insensitive (Python re syntax).
 #
 # References for pattern and family definitions:
 #   López-Mondéjar et al. (2022) mSystems — Table S3 CAZy family groupings
 #   CAZy database (Lombard et al. 2014, NAR) — family activity descriptions
+#   Hornung & Terrapon (2023) PLoS Comput Biol — GH19 subfamilies GH19_1/GH19_2
 #   Tláskal et al. 2021 mSystems — soil carbon cycling framing
 
 name: carbon_cycling
@@ -35,6 +41,7 @@ citations:
   - "López-Mondéjar et al. (2022) mSystems 7:e00829-22. https://doi.org/10.1128/msystems.00829-22"
   - "Lombard et al. (2014) Nucleic Acids Res. 42:D490-D495. https://doi.org/10.1093/nar/gkt1178"
   - "Tláskal et al. (2021) mSystems 6(1):e01078-20. https://doi.org/10.1128/msystems.01078-20"
+  - "Hornung & Terrapon (2023) PLoS Comput Biol 19(8):e1010881. https://doi.org/10.1371/journal.pcbi.1010881"
 
 
 # --- KEGG patterns ---
@@ -480,7 +487,8 @@ cazy_subcategories:
     families:
       # GH18 and GH19 are the dominant chitinase families in soil.
       - GH18   # chitinase (class I–IV); dominant soil chitinase
-      - GH19   # chitinase (plant-type, class I/II)
+      - GH19   # chitinase (plant-type, class I/II); used when no subfamily is called
+      - GH19_2 # chitinase subfamily (EC 3.2.1.14); Hornung & Terrapon 2023
       - GH20   # β-N-acetylhexosaminidase (cleaves chitin oligomers and N-glycans)
       - GH46   # chitosanase, chitinase
       - GH75   # chitosanase
@@ -628,6 +636,7 @@ cazy_subcategories:
       - GH103   # peptidoglycan lytic transglycosylase (EC 4.2.2.n1)
       - GH104   # peptidoglycan lytic transglycosylase (EC 4.2.2.n1)
       - GH108   # N-acetylmuramidase (EC 3.2.1.17)
+      - GH19_1  # lysozyme subfamily of GH19 (EC 3.2.1.17); phage endolysins. Hornung & Terrapon 2023
       - GH153  # PNAG N-deacetylase (biofilm polysaccharide)
       - CE9    # N-acetylglucosamine-6-phosphate deacetylase (EC 3.5.1.25) — GlcNAc recycling from peptidoglycan
     patterns:
@@ -661,10 +670,14 @@ cazy_subcategories:
 # (GH24) or class prefixes (GH). Each family takes its most specific entry:
 # subfamily > family > class > empty list (catch-all). For a gene with several
 # families, the role listed first here wins. Only one YAML may define this block.
+# Deviation from Table S15: GH19 subfamilies (Hornung & Terrapon 2023) split GH19 into
+# GH19_1 (lysozyme -> peptidoglycanase_lysis) and GH19_2 (chitinase -> polysaccharide_degrading).
+# GH19 without a subfamily call keeps the paper's virion_structural_or_lysis role.
+# GH19_2 must be listed explicitly: otherwise it falls back to the GH19 family entry.
 
 viral_cazy_roles:
-  peptidoglycanase_lysis: [GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9]
+  peptidoglycanase_lysis: [GH19_1, GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9]
   virion_structural_or_lysis: [GH19, PL1, PL1_2, PL6, PL7, PL9, PL14, GH28]
-  polysaccharide_degrading: [GH, PL, CE, AA3, AA5, AA7]   # Tables S6/S7 count only AA3/5/7; other AA -> other_cazy
+  polysaccharide_degrading: [GH19_2, GH, PL, CE, AA3, AA5, AA7]   # Tables S6/S7 count only AA3/5/7; other AA -> other_cazy
   non_catalytic_cbm: [CBM9, CBM12, CBM13, CBM32, CBM35, CBM50, CBM61, CBM67]
   other_cazy: []   # GT, unlisted CBMs; not in the paper's AMG set

@@ -2,6 +2,12 @@
 
 All notable changes to MetaFuncDecoder are documented here.
 
+## [2.1.0] — 2026-11-12
+
+### Changed
+
+- **GH19 subfamilies** (CAZy; Hornung & Terrapon 2023, PLoS Comput Biol 19:e1010881, https://doi.org/10.1371/journal.pcbi.1010881): GH19_1 (lysozyme, EC 3.2.1.17) is mapped to `peptidoglycanase` and `--viral` role `peptidoglycanase_lysis`; GH19_2 (chitinase, EC 3.2.1.14) to `chitinase` and `polysaccharide_degrading`. Output changes only for genes with a GH19 subfamily in `dbCAN_sub` (dbCAN3 / run_dbcan v4.0.0 and later), or a `GH19_1`/`GH19_2` ID in a combined table. GH19 without a subfamily call is unchanged (`chitinase`; `virion_structural_or_lysis`). The `--viral` sets therefore deviate from Merges et al. 2026 AEM, Table S15, for GH19 subfamilies.
+
 ## [2.0.0] — 2026-10-27
 
 ### Added

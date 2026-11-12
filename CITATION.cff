@@ -13,8 +13,8 @@ authors:
 repository-code: "https://github.com/dominikmerges/metafuncdecoder"
 doi: "10.5281/zenodo.19009291"
 license: MIT
-version: "2.0.0"
-date-released: "2026-10-29"
+version: "2.1.0"
+date-released: "2026-11-12"
 keywords:
   - metagenomics
   - functional annotation
