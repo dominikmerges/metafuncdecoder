@@ -227,9 +227,9 @@ Supplementary Table S15, and the family classes of Tables S6/S7:
 
 | `viral_cazy_role` | Families | Class in Tables S6/S7 |
 |---|---|---|
-| `peptidoglycanase_lysis` | GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9 | Peptidoglycanase (lysis), excluded from the AMG set |
+| `peptidoglycanase_lysis` | GH19_1, GH22, GH23, GH24, GH25, GH73, GH102, GH103, GH104, GH108, GH153, CE9 | Peptidoglycanase (lysis), excluded from the AMG set |
 | `virion_structural_or_lysis` | GH19, PL1, PL1_2, PL6, PL7, PL9, PL14, GH28 | Documented virion-structural or lysis role |
-| `polysaccharide_degrading` | any other GH, PL or CE family, plus AA3, AA5 and AA7 (other AA families are `other_cazy`) | Polysaccharide-degrading, no viral structural role reported |
+| `polysaccharide_degrading` | GH19_2; any other GH, PL or CE family, plus AA3, AA5 and AA7 (other AA families are `other_cazy`) | Polysaccharide-degrading, no viral structural role reported |
 | `non_catalytic_cbm` | CBM9, CBM12, CBM13, CBM32, CBM35, CBM50, CBM61, CBM67 | Non-catalytic binding module |
 | `other_cazy` | any other family (e.g. GT, unlisted CBMs) | Not in the paper's AMG set; not classified |
 | *(empty)* | none | Gene has no CAZy hit (after `--cazy-min-tools`) |
@@ -254,10 +254,18 @@ combined table. Only one YAML file may define `viral_cazy_roles`; if several
 do, the first in load order is used and a warning is printed.
 
 The label reflects what is known about the family, not this particular
-gene. GH19 in particular remains
-ambiguous between chitinase and endolysin; in the paper, most cassette-eligible
-GH19 genes sat next to a holin/spanin (Tables S8–S9), which favours a lysis role
-but needs gene order to test. MetaFuncDecoder does not use gene order.
+gene. GH19 is split into the subfamilies GH19_1 (lysozyme, EC 3.2.1.17) and
+GH19_2 (chitinase, EC 3.2.1.14) (Hornung & Terrapon 2023). These two rows
+deviate from Table S15, which treated GH19 as one family. The subfamilies are
+called in the `dbCAN_sub` column from dbCAN3 / run_dbcan v4.0.0 (2023) onwards;
+older outputs report GH19 only. Subfamily calls require a dbCAN-sub
+database that includes the GH19 subfamilies. When dbCAN reports a GH19 subfamily, GH19_1 is
+labelled `peptidoglycanase_lysis` and GH19_2
+`polysaccharide_degrading`. GH19 without a subfamily call keeps the paper's
+`virion_structural_or_lysis` label, because it remains ambiguous between
+chitinase and endolysin. In the paper, most cassette-eligible GH19 genes sat
+next to a holin/spanin (Tables S8–S9), which favours a lysis role but needs
+gene order to test. MetaFuncDecoder does not use gene order.
 Typical use: keep `polysaccharide_degrading` as candidate AMGs and report
 `virion_structural_or_lysis` separately.
 
@@ -295,7 +303,7 @@ Categories are defined in YAML files in `categories/`. Three defaults are provid
 
 | File | Category | Basis |
 |------|----------|-------|
-| `carbon_cycling.yaml` | Carbohydrate-active enzyme functions | López-Mondéjar et al. (2022) mSystems; CAZy database |
+| `carbon_cycling.yaml` | Carbohydrate-active enzyme functions | López-Mondéjar et al. (2022) mSystems; CAZy database; GH19 subfamilies from Hornung & Terrapon (2023) |
 | `nitrogen_cycling.yaml` | Nitrogen transformation functions | NCycDB (Tu et al. 2019) gene families |
 | `antibiotics.yaml` | Antibiotic resistance and biosynthesis | CARD/ARO (Alcock et al. 2023) |
 
@@ -357,13 +365,13 @@ To run the test suite:
 pytest -q
 ```
 
-All 98 tests run in-memory and do not require the reference databases to be downloaded.
+All 102 tests run in-memory and do not require the reference databases to be downloaded.
 
 ## Citation
 
 If you use MetaFuncDecoder, please cite the software release:
 
-> Merges D (2026). MetaFuncDecoder (v2.0.0). Zenodo. https://doi.org/10.5281/zenodo.19009291
+> Merges D (2026). MetaFuncDecoder (v2.1.0). Zenodo. https://doi.org/10.5281/zenodo.19009291
 
 This DOI always points to the latest release. Each version also has its own DOI,
 listed on the [Zenodo record](https://doi.org/10.5281/zenodo.19009291).
@@ -374,3 +382,4 @@ And the relevant category definition sources:
 - Alcock et al. (2023) Nucleic Acids Res. 51:D690-D699
 - Aramaki et al. (2020) Bioinformatics 36:2251-2252 (KOfam)
 - Lombard et al. (2014) Nucleic Acids Res. 42:D490-D495 (CAZy)
+- Hornung & Terrapon (2023) PLoS Comput Biol 19(8):e1010881 (GH19 subfamilies). https://doi.org/10.1371/journal.pcbi.1010881

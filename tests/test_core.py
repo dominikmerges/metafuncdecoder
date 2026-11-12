@@ -1108,6 +1108,31 @@ def test_ce9_in_peptidoglycanase_subcategory():
     fams = cats["carbon_cycling"]["cazy_subcategories"]["peptidoglycanase"]["families"]
     assert "CE9" in fams
 
+
+def test_gh19_subfamilies_split_chitinase_and_lysozyme():
+    """GH19_1 is lysozyme, GH19_2 chitinase; GH19 without a subfamily is unchanged."""
+    import pandas as pd
+    cats = load_categories(str(Path(__file__).parent.parent / "categories"))
+    d = MetaFuncDecoder(cats)
+    assert d.cazy_mapper.get_family_categories("GH19_1") == ["peptidoglycanase"]
+    assert d.cazy_mapper.get_family_categories("GH19_2") == ["chitinase"]
+    assert d.cazy_mapper.get_family_categories("GH19") == ["chitinase"]
+
+    d.data["v"] = pd.DataFrame([
+        {"gene_id": g, "kegg_ortholog": None, "pfam": None, "cazyme": "GH19",
+         "cazy_subfamilies": sub, "cazy_ec": "", "cazy_tools": "3"}
+        for g, sub in [("g1", "GH19_1"), ("g2", "GH19_2"), ("g3", "")]
+    ])
+    d.standardize_annotations()
+    d.add_viral_cazy_roles()
+    ann = d.annotations["v"].set_index("gene_id")
+    assert ann.loc["g1", "subcategories"] == "peptidoglycanase"
+    assert ann.loc["g2", "subcategories"] == "chitinase"
+    assert ann.loc["g3", "subcategories"] == "chitinase"
+    assert ann.loc["g1", "viral_cazy_role"] == "peptidoglycanase_lysis"
+    assert ann.loc["g2", "viral_cazy_role"] == "polysaccharide_degrading"
+    assert ann.loc["g3", "viral_cazy_role"] == "virion_structural_or_lysis"
+
 class TestViralCazyRole:
     """--viral: roles come from viral_cazy_roles in carbon_cycling.yaml."""
 
@@ -1124,6 +1149,10 @@ class TestViralCazyRole:
         ("CBM50", "non_catalytic_cbm"),
         ("CBM50;GH19", "virion_structural_or_lysis"),
         ("CBM32;GH18", "polysaccharide_degrading"),
+        # GH19 subfamilies (Hornung & Terrapon 2023); bare GH19 keeps the Table S15 role
+        ("GH19_1", "peptidoglycanase_lysis"),
+        ("GH19_2", "polysaccharide_degrading"),
+        ("CBM50+GH19_2", "polysaccharide_degrading"),
         # catch-all no longer swallows non-degrading classes
         ("AA7", "polysaccharide_degrading"),  # Table S6
         ("AA3", "polysaccharide_degrading"),
